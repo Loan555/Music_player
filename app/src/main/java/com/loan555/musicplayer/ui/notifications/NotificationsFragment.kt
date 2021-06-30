@@ -8,6 +8,7 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProviders
 import com.loan555.musicplayer.MY_TAG
 import com.loan555.musicplayer.R
 import com.loan555.musicplayer.databinding.FragmentNotificationsBinding
@@ -57,7 +58,7 @@ class NotificationsFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         notificationsViewModel = activity?.let {
-            ViewModelProvider(this).get(AppViewModel::class.java)
+            ViewModelProviders.of(this).get(AppViewModel::class.java)
         } ?: throw Exception("Activity is null")
 
         _binding = FragmentNotificationsBinding.inflate(inflater, container, false)

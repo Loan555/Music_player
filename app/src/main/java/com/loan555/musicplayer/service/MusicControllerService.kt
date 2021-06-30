@@ -1,33 +1,55 @@
 package com.loan555.musicplayer.service
 
+import android.app.PendingIntent
 import android.app.Service
-import android.content.ContentUris
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import android.content.IntentFilter
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Binder
-import android.os.Build
 import android.os.IBinder
-import android.provider.MediaStore
+import android.support.v4.media.session.MediaSessionCompat
 import android.util.Log
-import android.util.Size
 import android.widget.Toast
-import androidx.core.content.ContextCompat
+import androidx.core.app.NotificationCompat
 import com.loan555.musicplayer.MY_TAG
+import com.loan555.musicplayer.R
 import com.loan555.musicplayer.model.*
-import java.io.IOException
-import java.lang.Exception
+
+const val ACTION_PAUSE = -1
+const val ACTION_RESUME = 1
+const val ACTION_NEXT = 2
+const val ACTION_BACK = -2
+const val ACTION_PLAY = 3
+const val ACTION_STOP = -3
+const val ACTION_PLAY_PAUSE = 4
+
+const val CHANNEL_ID = "channel_music_app"
+const val ONGOING_NOTIFICATION_ID = 1
+const val ACTION_MUSIC = "android.intent.action.MY_MUSIC_ACTION"
+const val KEY_ACTION_MUSIC = "action_music"
 
 class MusicControllerService : Service() {
+    private lateinit var br: BroadcastReceiver
     private val binder = MusicControllerBinder()
-    private var player: MediaPlayer? = null
-    private var songPos = 0
-    private val songs = ArrayList<SongCustom>()
-    var songsStorage = ArrayList<SongCustom>()
+    var player: MediaPlayer? = null
+    lateinit var songIDPlaying: String
+    var songPos: Int = -1
+    var songs = ArrayList<SongCustom>()
+    var looping = false
+    private lateinit var prevPendingIntent: PendingIntent
+    private lateinit var pausePendingIntent: PendingIntent
+    private lateinit var nextPendingIntent: PendingIntent
+    private lateinit var stopPendingIntent: PendingIntent
+    var listPlaying = -1
+    //-1: ko cos list nao
+    //0: offline
+    //1: bang xep hang
+    //2: bai hat lien quan
+    //3,4,... : list tu tao
 
     private lateinit var mainViewModel: AppViewModel
 
@@ -43,6 +65,55 @@ class MusicControllerService : Service() {
     override fun onCreate() {
         Log.d("aaa", "service onCreate")
         super.onCreate()
+        val filter = IntentFilter(ACTION_MUSIC)
+        br = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                val action = intent?.getIntExtra(KEY_ACTION_MUSIC, 0)!!
+                Log.d(MY_TAG, "onReceive service ${intent?.action} ------------- $action")
+                handAction(action)
+                if (action != ACTION_STOP)// gap may su kien nay thi moi update notification
+                    Intent(this@MusicControllerService, MusicControllerService::class.java).also {
+                        startService(it)
+                    }
+            }
+        }
+        registerReceiver(br, filter)
+        val prevIntent = Intent(ACTION_MUSIC).apply {
+            putExtra(KEY_ACTION_MUSIC, ACTION_BACK)
+        }
+        prevPendingIntent = PendingIntent.getBroadcast(
+            this,
+            ACTION_BACK,
+            prevIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val nextIntent = Intent(ACTION_MUSIC).apply {
+            putExtra(KEY_ACTION_MUSIC, ACTION_NEXT)
+        }
+        nextPendingIntent = PendingIntent.getBroadcast(
+            this,
+            ACTION_NEXT,
+            nextIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val stopIntent = Intent(ACTION_MUSIC).apply {
+            putExtra(KEY_ACTION_MUSIC, ACTION_STOP)
+        }
+        stopPendingIntent = PendingIntent.getBroadcast(
+            this,
+            ACTION_STOP,
+            stopIntent,
+            PendingIntent.FLAG_CANCEL_CURRENT
+        )
+        val pauseIntent = Intent(ACTION_MUSIC).apply {
+            putExtra(KEY_ACTION_MUSIC, ACTION_PLAY_PAUSE)
+        }
+        pausePendingIntent = PendingIntent.getBroadcast(
+            this,
+            ACTION_PLAY_PAUSE,
+            pauseIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT
+        )
     }
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -50,150 +121,133 @@ class MusicControllerService : Service() {
         return binder
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d(MY_TAG, "service onStartCommand")
+        val pendingIntent =
+            PendingIntent.getActivity(this, 0, intent, flags)
+        val mediaSession = MediaSessionCompat(this, "tag")
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            // Show controls on lock screen even when user hides sensitive content.
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setContentTitle(songs[songPos].title)
+            .setContentText(songs[songPos].artists)
+            .setSmallIcon(R.drawable.ic_music_note)
+            .setLargeIcon(songs[songPos].bitmap)
+            // Add media control buttons that invoke intents in your media service
+            .addAction(
+                R.drawable.ic_skip_previous,
+                "Previous",
+                prevPendingIntent
+            ) // #0
+            .addAction(getBtnImg(), "Pause", pausePendingIntent) // #1
+            .addAction(
+                R.drawable.ic_baseline_skip_next,
+                "Next",
+                nextPendingIntent
+            ) // #2
+            .addAction(R.drawable.ic_close, "Stop", stopPendingIntent) // #3
+            .setStyle(
+                androidx.media.app.NotificationCompat.MediaStyle()
+                    .setShowActionsInCompactView(0, 1, 2 /* #1: pause button \*/)
+                    .setMediaSession(mediaSession.sessionToken)
+            )
+            .setSound(null)
+            .setContentIntent(pendingIntent)
+            .build()
+        startForeground(ONGOING_NOTIFICATION_ID, notification)
+        return START_NOT_STICKY
+    }
+
+    private fun getBtnImg(): Int {
+        return if (isPng() == true) {
+            R.drawable.ic_pause
+        } else R.drawable.ic_play
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         player?.release()
         player = null
-    }
-
-    /**
-     * Data Storage
-     */
-
-    private fun checkPermissionStorage(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this,
-            android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-        ) == (PackageManager.PERMISSION_GRANTED)
-    }
-
-    fun getListFromStorage(): Boolean {
-        var resultOK = false
-        if (!checkPermissionStorage()) {
-            Toast.makeText(this, "Permission storage is deni", Toast.LENGTH_SHORT).show()
-            return resultOK
-        }
-        val collection: Uri =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                MediaStore.Audio.Media.getContentUri(
-                    MediaStore.VOLUME_EXTERNAL
-                )
-            } else {
-                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-            }
-        val protection = arrayOf(
-            MediaStore.Audio.Media._ID,
-            MediaStore.Audio.Media.DISPLAY_NAME,
-            MediaStore.Audio.Media.ARTIST,
-            MediaStore.Audio.Media.DURATION,
-            MediaStore.Audio.Media.SIZE,
-            MediaStore.Audio.Media.TITLE,
-            MediaStore.Audio.Media.ALBUM
-        )
-        val selection = null
-        val selectionArgs = null
-        val sortOder = "${MediaStore.Audio.Media.DISPLAY_NAME} ASC"
-
-        val query = this.applicationContext.contentResolver.query(
-            collection,
-            protection,
-            selection,
-            selectionArgs,
-            sortOder
-        )
-        val newSongs = ArrayList<SongCustom>()
-        try {
-            query?.use { cursor ->
-                newSongs.clear()
-                val options = BitmapFactory.Options()
-                options.outHeight = 480
-                options.outWidth = 640
-                // Cache column indices.
-                val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
-                val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
-                val artistsColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
-                val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
-                val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
-                val titleColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
-                val albumsColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
-                while (cursor.moveToNext()) {
-                    // Get values of columns for a given audio.
-                    val id = cursor.getLong(idColumn)
-                    val name = cursor.getString(nameColumn)
-                    val artists = cursor.getString(artistsColumn)
-                    val duration = cursor.getInt(durationColumn)
-                    val size = cursor.getInt(sizeColumn)
-                    val title = cursor.getString(titleColumn)
-                    val albums = cursor.getString(albumsColumn)
-
-                    //load content Uri
-                    val contentUri: Uri =
-                        ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
-
-                    // Load thumbnail of a specific media item.
-                    var thumbnail: Bitmap? = null
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        try {
-                            val thumb = this.applicationContext.contentResolver.loadThumbnail(
-                                contentUri, Size(640, 480), null
-                            )
-                            if (thumb != null)
-                                thumbnail = thumb
-                        } catch (e: IOException) {
-                            Log.e(MY_TAG, "can't find bitmap: ${e.message}")
-                        }
-                    }
-                    // Stores column values and the contentUri in a local object
-                    // that represents the media file.
-                    val newSong = SongCustom(
-                        id.toString(),
-                        name,
-                        artists,
-                        duration,
-                        size,
-                        title,
-                        albums,
-                        true,
-                        contentUri.toString()
-                    )
-                    newSongs.add(newSong)
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(MY_TAG, "error getListFromStorage: ${e.message}")
-        }
-        if (newSongs.size != 0) {
-            songsStorage = newSongs
-            resultOK = true
-        }
-        return resultOK
+        listPlaying = -1
+        unregisterReceiver(br)
+        Log.d(MY_TAG, "service onDestroy")
     }
 
     /**     music controller */
-    private fun playSong(linkUri: String) {
-        Toast.makeText(this, "song is playing", Toast.LENGTH_LONG).show()
+    fun playSong(position: Int) {
+        Log.d(MY_TAG, "service playSong")
+        songPos = position
+        val uri: Uri = Uri.parse(songs[position].linkUri)
         player?.release()
-        val uri: Uri = Uri.parse(linkUri)
         player = MediaPlayer().apply {
             setAudioStreamType(AudioManager.STREAM_MUSIC)
             setDataSource(applicationContext, uri)
+            setOnCompletionListener {
+                playNext()
+            }
+            isLooping = looping
             prepare()
             start()
         }
+        Intent(this, MusicControllerService::class.java).also {
+            it.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startService(it)
+        }
+        sentMyBroadcast(ACTION_PLAY)
     }
 
-    fun playNext() {
+    private fun handAction(action: Int) {
+        when (action) {
+            ACTION_PAUSE -> {
+                pausePlayer()
+            }
+            ACTION_RESUME -> {
+                resumePlayer()
+            }
+            ACTION_BACK -> {
+                playPrev()
+            }
+            ACTION_NEXT -> {
+                playNext()
+            }
+            ACTION_STOP -> {
+                Log.d(MY_TAG, "stop fogero service")
+//                unregisterReceiver(br)
+                stopSelf()
+            }
+            ACTION_PLAY_PAUSE -> {
+                when (isPng()) {
+                    true -> handAction(ACTION_PAUSE)
+                    false -> handAction(ACTION_RESUME)
+                }
+            }
+        }
+    }
+
+    private fun sentMyBroadcast(action: Int) {
+        val intent = Intent().also {
+            it.action = ACTION_MUSIC
+            it.putExtra(KEY_ACTION_MUSIC, action)
+        }
+        sendBroadcast(intent)
+    }
+
+    fun playNext(): String? {
         Toast.makeText(this, "next", Toast.LENGTH_SHORT).show()
         songPos++;
-        if (songPos == songs.size) songPos = 0;
-        this.playSong("api.mp3.zing.vn/api/streaming/audio/${songs[songPos].id}/320")
+        if (songPos == songs.size) songPos = 0
+        this.playSong(songPos)
+        songIDPlaying = songs[songPos].linkUri
+        return songIDPlaying
     }
 
-    fun playPrev() {
+    private fun playPrev(): String? {
         Toast.makeText(this, "back", Toast.LENGTH_SHORT).show()
-        songPos--;
-        if (songPos == 0) songPos = songs.size - 1;
-        this.playSong("api.mp3.zing.vn/api/streaming/audio/ZWBIF86E/320")
+        songPos--
+        if (songPos == -1) songPos = songs.size - 1;
+        this.playSong(songPos)
+        songIDPlaying = songs[songPos].linkUri
+        return songIDPlaying
     }
 
     fun getPos(): Int? {
@@ -208,8 +262,12 @@ class MusicControllerService : Service() {
         return player?.isPlaying
     }
 
-    fun pausePlayer() {
+    private fun pausePlayer() {
         player?.pause()
+    }
+
+    private fun resumePlayer() {
+        player?.start()
     }
 
     fun seek(position: Int) {

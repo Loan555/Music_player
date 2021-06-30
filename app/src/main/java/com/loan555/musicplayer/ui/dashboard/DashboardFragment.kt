@@ -8,21 +8,24 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProviders
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.loan555.musicplayer.MY_TAG
-import com.loan555.musicplayer.MainActivity
 import com.loan555.musicplayer.databinding.FragmentDashboardBinding
 import com.loan555.musicplayer.model.AppModel
 import com.loan555.musicplayer.model.AppViewModel
 import com.loan555.musicplayer.model.DataChartResult
-import com.loan555.musicplayer.service.ApiChartService
+import com.loan555.musicplayer.model.SongCustom
+import com.loan555.musicplayer.ui.home.ListSongAdapter
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.lang.Exception
 
-class DashboardFragment : Fragment() {
+class DashboardFragment : Fragment(),ListSongAdapter.OnItemClickListener {
 
+    private lateinit var songAdapter: ListSongAdapter
     private lateinit var dashboardViewModel: AppViewModel
     private var _binding: FragmentDashboardBinding? = null
 
@@ -37,17 +40,19 @@ class DashboardFragment : Fragment() {
     ): View? {
         Log.d(MY_TAG, "DashboardFragment onCreateView")
         dashboardViewModel = activity?.let {
-            ViewModelProvider(this).get(AppViewModel::class.java)
+            ViewModelProviders.of(this).get(AppViewModel::class.java)
         } ?: throw Exception("Activity is null")
 
         _binding = FragmentDashboardBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
-        val textView: TextView = binding.textDashboard
-        dashboardViewModel.text.observe(viewLifecycleOwner, Observer {
-            textView.text = it
+        val recyclerView: RecyclerView = binding.recyclerSongsChart
+        recyclerView.layoutManager = LinearLayoutManager(this.requireContext(),LinearLayoutManager.VERTICAL,false)
+        dashboardViewModel.mListSongChartLiveData.observe(viewLifecycleOwner,{
+            songAdapter = ListSongAdapter(it, this)
+            recyclerView.adapter = songAdapter
         })
-        getCurrentChartData()
+
         return root
     }
 
@@ -56,32 +61,7 @@ class DashboardFragment : Fragment() {
         _binding = null
     }
 
-    private fun getCurrentChartData() {
-        Log.d(MY_TAG, "getCurrentChartData")
-        val call = AppModel.serviceApiGetChart.getCurrentData(
-            AppModel.songId,
-            AppModel.videoId,
-            AppModel.albumId,
-            AppModel.chart,
-            AppModel.time
-        )
-        call.enqueue(object : Callback<DataChartResult> {
-            override fun onResponse(
-                call: Call<DataChartResult>,
-                response: Response<DataChartResult>
-            ) {
-                if (response.code() == 200) {
-                    val dataResponse = response.body()!!
-                    dashboardViewModel._text.apply {
-                        value = dataResponse.data.toString()
-                    }
-                    Log.d(MY_TAG, "loadData success")
-                } else Log.e("aaa", "response.code() = ${response.code()}")
-            }
-
-            override fun onFailure(call: Call<DataChartResult>, t: Throwable) {
-                Log.e(MY_TAG, "error getCurrentChartData ${t.message}")
-            }
-        })
+    override fun onItemClick(v: View?, item: SongCustom, position: Int) {
+        Log.e(MY_TAG,"item chart click")
     }
 }

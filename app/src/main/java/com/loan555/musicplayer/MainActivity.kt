@@ -1,11 +1,9 @@
 package com.loan555.musicplayer
 
 import android.Manifest
-import android.content.ComponentName
-import android.content.Context
-import android.content.Intent
-import android.content.ServiceConnection
+import android.content.*
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
@@ -18,8 +16,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.viewpager.widget.ViewPager
 import com.loan555.musicplayer.databinding.ActivityMainBinding
 import com.loan555.musicplayer.model.AppViewModel
-import com.loan555.musicplayer.model.SongCustom
-import com.loan555.musicplayer.service.MusicControllerService
+import com.loan555.musicplayer.model.SongList
+import com.loan555.musicplayer.service.*
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -30,19 +28,30 @@ const val NUM_PAGES = 3
 const val MY_TAG = "aaa"
 const val STORAGE_REQUEST_CODE = 1
 
+const val PLAYLIST_STORAGE = 0
+const val PLAYLIST_CHART = 1
+const val PLAYLIST_RELATED = 2
+const val PLAYLIST_LIKE = 3
+
 class MainActivity : AppCompatActivity() {
+    //broadcast
+    private lateinit var br: BroadcastReceiver
+
     //permission
     private val storagePermission = arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE)
 
     //view
     private lateinit var mPager: ViewPager
     private lateinit var mainViewModel: AppViewModel
-    private var _binding: ActivityMainBinding? = null
-    private val binding get() = _binding!!
+    private lateinit var binding: ActivityMainBinding
 
     //service
-    private lateinit var mService: MusicControllerService
-    private var mBound: Boolean = false
+    companion object {
+        lateinit var mService: MusicControllerService
+        var mBound: Boolean = false
+        var mSongList = SongList()// list storage
+        var mSongListChart = SongList()// list chart
+    }
 
     /** Defines callbacks for service binding, passed to bindService()  */
     private val conn = object : ServiceConnection {
@@ -64,7 +73,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d(MY_TAG, "onCreate activity")
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         mainViewModel = ViewModelProvider(this@MainActivity).get(AppViewModel::class.java)
         //tool bar
@@ -81,7 +92,6 @@ class MainActivity : AppCompatActivity() {
                 positionOffset: Float,
                 positionOffsetPixels: Int
             ) {
-
             }
 
             override fun onPageSelected(position: Int) {
@@ -122,29 +132,74 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        pager_main.setOnClickListener {
-            val song = SongCustom(
-                "id",
-                "tên bài hát̃",
-                "tên ca sĩ", 100, 12, "tên hiển thị", "tên albums", true, "link ủi"
-            )
-            mainViewModel.addData(song)
-            Log.d(MY_TAG,"click")
+        mainViewModel.itemPlayingImg.observe(this, {
+            if (it != null)
+                binding.imgSong.setImageBitmap(it)
+            else binding.imgSong.setImageResource(R.drawable.musical_note_icon)
+        })
+        mainViewModel.title.observe(this, {
+            binding.songName.text = it
+        })
+        mainViewModel.artist.observe(this, {
+            binding.artistsNames.text = it
+        })
+        mainViewModel.isPlaying.observe(this, {
+            if (it)
+                binding.btnPlayPause.setImageResource(R.drawable.ic_pause)
+            else binding.btnPlayPause.setImageResource(R.drawable.ic_play)
+        })
+        mainViewModel.isVisible.observe(this, {
+            if (it)
+                binding.itemPlaying.visibility = View.VISIBLE
+            else binding.itemPlaying.visibility = View.GONE
+        })
+        mainViewModel.listPos.observe(this, {
+            when (it) {
+
+            }
+        })
+        /**
+         * Event listener
+         */
+        binding.btnPlayPause.setOnClickListener {
+            handBtnPlayPause()
         }
+        binding.btnSkipNext.setOnClickListener {
+            controlMusic(ACTION_NEXT)
+        }
+        binding.btnSkipPrevious.setOnClickListener {
+            controlMusic(ACTION_BACK)
+        }
+        /**
+         * load data
+         */
+        loadDataChart()
     }
 
     override fun onStart() {
         super.onStart()
         Log.d(MY_TAG, "onStart activity")
-        Intent(this, MusicControllerService::class.java).also {
-            bindService(it, conn, Context.BIND_AUTO_CREATE)
+        val intentService = Intent(this, MusicControllerService::class.java)
+        bindService(intentService, conn, Context.BIND_AUTO_CREATE)
+
+        val filter = IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION).apply {
+            addAction(ACTION_MUSIC)
         }
+        br = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                val action = intent?.getIntExtra(KEY_ACTION_MUSIC, 0)
+                Log.d(MY_TAG, "onReceive activity ${intent?.action} ------------- $action")
+                if (action != null)
+                    handActionMusic(action)
+            }
+        }
+        registerReceiver(br, filter)
     }
 
     override fun onDestroy() {
-        Log.d(MY_TAG,"activity onDestroy")
+        Log.d(MY_TAG, "activity onDestroy")
         super.onDestroy()
-        mBound = false
+        unregisterReceiver(br)
         unbindService(conn)
     }
 
@@ -169,8 +224,7 @@ class MainActivity : AppCompatActivity() {
                     //permission granted
                     Toast.makeText(this, "Allow...", Toast.LENGTH_SHORT)
                         .show()
-                    if (mBound)
-                        loadDataStorage()
+                    loadDataStorage()
                 } else {
                     //permission denied
                     Toast.makeText(this, "Storage permission required...", Toast.LENGTH_SHORT)
@@ -194,17 +248,93 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadDataStorage() {
+        Log.d(MY_TAG, "loadDataStorage")
         if (checkStoragePermission()) {
             GlobalScope.launch(Dispatchers.Main) {
                 val resultOK = async(Dispatchers.IO) {
-                    return@async mService.getListFromStorage()
+                    return@async mSongList.getListFromStorage(this@MainActivity)
                 }
                 if (resultOK.await()) {
-                    for (i in 0 until mService.songsStorage.size){
-                        mainViewModel.addData(mService.songsStorage[i])
-                    }
+                    mainViewModel.readData(mSongList.playList, PLAYLIST_STORAGE)
                 }
             }
         } else requestStoragePermission()
+    }
+
+    private fun loadDataChart() {
+        if (checkInternet()) {
+            Log.d(MY_TAG,"loadDataChart")
+            GlobalScope.launch(Dispatchers.Main) {
+                val resultOK = async(Dispatchers.IO) {
+                    return@async mSongListChart.getListFromApiChart(this@MainActivity)
+                }
+                if (resultOK.await()) {
+                    mainViewModel.readData(mSongListChart.playList, PLAYLIST_CHART)
+                    Log.d(MY_TAG,"list chart = ${mainViewModel.mListSongChartLiveData.value}")
+                }else
+                    Log.d(MY_TAG,"can't read chart")
+            }
+        } else Toast.makeText(this, "Không có kết nối mạng", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun checkInternet(): Boolean {
+        return true
+    }
+
+    private fun handViewItem() {
+        val item = mService.songs[mService.songPos]
+        val isPlaying = mService.isPng() == true
+        mainViewModel.initItemPlaying(item.bitmap, item.title, item.artists, isPlaying)
+    }
+
+    private fun handBtnPlayPause() {
+        if (mBound) {
+            if (mService.isPng() == true) {
+                controlMusic(ACTION_PAUSE)
+                mainViewModel.handPause()
+            } else {
+                controlMusic(ACTION_RESUME)
+                mainViewModel.handResume()
+            }
+        }
+    }
+
+    private fun controlMusic(action: Int) {
+        val intent = Intent().also {
+            it.action = ACTION_MUSIC
+            it.putExtra(KEY_ACTION_MUSIC, action)
+        }
+        sendBroadcast(intent)
+    }
+
+    private fun handActionMusic(action: Int) {
+        when (action) {
+            ACTION_RESUME -> {
+                mainViewModel.handResume()
+            }
+            ACTION_PAUSE -> {
+                mainViewModel.handPause()
+            }
+            ACTION_STOP -> {
+                Log.d(MY_TAG, "stop bound service")
+                if (mBound)
+                    unbindService(conn)
+                mainViewModel.handStop()
+            }
+            ACTION_PLAY, ACTION_NEXT, ACTION_BACK -> {
+                if (!mBound) {
+                    val intentService = Intent(this, MusicControllerService::class.java)
+                    bindService(intentService, conn, Context.BIND_AUTO_CREATE)
+                }
+                mainViewModel.initItemPlaying(
+                    mService.songs[mService.songPos].bitmap, mService.songs[mService.songPos].title,
+                    mService.songs[mService.songPos].artists, mService.isPng() == true
+                )
+            }
+            ACTION_PLAY_PAUSE -> {
+                if (mService.isPng() == true) handActionMusic(ACTION_RESUME)
+                else handActionMusic(ACTION_PAUSE)
+            }
+        }
     }
 }
