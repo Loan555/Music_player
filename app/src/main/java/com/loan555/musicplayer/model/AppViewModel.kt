@@ -1,7 +1,6 @@
 package com.loan555.musicplayer.model
 
 import android.graphics.Bitmap
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -12,26 +11,38 @@ class AppViewModel : ViewModel() {
     /**
      * activity
      */
-    private var _itemPlayingImg = MutableLiveData<Bitmap>().apply {
+    private val _itemPlayingImg = MutableLiveData<Bitmap>().apply {
         value = null
     }
-    private var _title = MutableLiveData<String>().apply {
+    private val _title = MutableLiveData<String>().apply {
         value = ""
     }
-    private var _artist = MutableLiveData<String>().apply {
+    private val _artist = MutableLiveData<String>().apply {
         value = ""
     }
-    private var _isPlaying = MutableLiveData<Boolean>().apply {
+    private val _isPlaying = MutableLiveData<Boolean>().apply {
         value = false
     }
-    private var _isVisible = MutableLiveData<Boolean>().apply {
+    private val _isVisible = MutableLiveData<Boolean>().apply {
         value = false
     }
-    private var _songPos = MutableLiveData<Int>().apply {
+    private val _songPos = MutableLiveData<Int>().apply {
         value = -1
     }
-    private var _listPos = MutableLiveData<Int>().apply {
+    private val _listPos = MutableLiveData<Int>().apply {
         value = PLAYLIST_NOTHING
+    }
+    private val _chartLoading = MutableLiveData<Boolean>().apply {
+        value = false
+    }
+    private val _homeLoading = MutableLiveData<Boolean>().apply {
+        value = false
+    }
+    private val _searchLoading = MutableLiveData<Boolean>().apply {
+        value = false
+    }
+    private val _pageLoader = MutableLiveData<Int>().apply {
+        value = -1
     }
     val itemPlayingImg: LiveData<Bitmap> = _itemPlayingImg
     val title: LiveData<String> = _title
@@ -40,6 +51,28 @@ class AppViewModel : ViewModel() {
     val isVisible: LiveData<Boolean> = _isVisible
     val songPos: LiveData<Int> = _songPos
     val listPos: LiveData<Int> = _listPos
+    val chartLoading: LiveData<Boolean> = _chartLoading
+    val homeLoading: LiveData<Boolean> = _homeLoading
+    val searchLoading: LiveData<Boolean> = _searchLoading
+    val pageLoader: LiveData<Int> = _pageLoader
+
+    fun getLoading(pageNumber: Int){
+        _pageLoader.value = pageNumber
+    }
+
+    fun setLoading(isLoading: Boolean, playList: Int) {
+        when (playList) {
+            PLAYLIST_CHART -> {
+                _chartLoading.value = isLoading
+            }
+            PLAYLIST_SEARCH -> {
+                _searchLoading.value = isLoading
+            }
+            PLAYLIST_STORAGE -> {
+                _homeLoading.value = isLoading
+            }
+        }
+    }
 
     fun playSong(sP: Int, lP: Int) {
         if (_listPos.value != lP)

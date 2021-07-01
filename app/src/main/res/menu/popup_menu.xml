@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/popup_like"
+        android:title="@string/th_m_va_o_ba_i_ha_t_y_u_thi_ch" />
+    <item
+        android:id="@+id/popup_add_playlist"
+        android:title="@string/th_m_va_o_danh_sa_ch_pha_t" />
+    <item
+        android:id="@+id/popup_download"
+        android:title="@string/ta_i_v" />
+</menu>

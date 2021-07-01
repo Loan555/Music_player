@@ -1,10 +1,12 @@
 package com.loan555.musicplayer.model
 
 import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import android.util.Size
@@ -19,11 +21,13 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.io.IOException
+import java.io.OutputStream
 import java.lang.Exception
 
 class PlayList {
     var playList = ArrayList<SongCustom>()
     var id: Int = PLAYLIST_NOTHING
+
     fun getListFromStorage(context: Context): Boolean {
         var resultOK = false
         val collection: Uri =

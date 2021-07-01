@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:padding="5dp">
@@ -47,14 +48,14 @@
             android:layout_height="wrap_content"
             android:text="@string/artists_names"
             android:textSize="12sp" />
-
     </LinearLayout>
 
     <View
-        android:layout_width="match_parent"
+        android:layout_width="130dp"
         android:layout_height="40dp"
-        android:layout_marginStart="100dp"
         android:background="@drawable/background_item"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
@@ -66,27 +67,6 @@
         app:layout_constraintBottom_toBottomOf="@id/guidelineVe"
         app:layout_constraintLeft_toLeftOf="@id/guidelineHo"
         app:layout_constraintRight_toRightOf="@id/guidelineHo"
-        app:layout_constraintTop_toTopOf="@id/guidelineVe" />
-
-    <ImageButton
-        android:id="@+id/btn_more_adapter"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="@color/no_color"
-        android:src="@drawable/ic_baseline_more_vert_white_24"
-        app:layout_constraintBottom_toBottomOf="@id/guidelineVe"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="@id/guidelineVe" />
-
-    <ImageButton
-        android:id="@+id/btn_favorite_adapter"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="@color/no_color"
-        android:src="@drawable/ic_baseline_favorite_border_24"
-        app:layout_constraintBottom_toBottomOf="@id/guidelineVe"
-        app:layout_constraintRight_toLeftOf="@id/btn_more_adapter"
-        app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="@id/guidelineVe" />
 
     <androidx.constraintlayout.widget.Guideline
@@ -101,6 +81,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        app:layout_constraintGuide_percent="0.7" />
+        app:layout_constraintGuide_percent="0.9" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

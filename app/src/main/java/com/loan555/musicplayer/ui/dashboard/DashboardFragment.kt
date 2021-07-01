@@ -47,6 +47,15 @@ class DashboardFragment : Fragment(), ListChartAdapter.OnItemClickListener {
             recyclerView.adapter = songAdapter
             Log.d(MY_TAG, "songs chart = $it")
         })
+        dashboardViewModel.chartLoading.observe(viewLifecycleOwner, {
+            if (it) binding.progressChart.visibility = View.VISIBLE
+            else binding.progressChart.visibility = View.GONE
+        })
+        binding.swipeRefresh.setOnRefreshListener {
+            dashboardViewModel.getLoading(1)
+            binding.swipeRefresh.isRefreshing = false
+            dashboardViewModel.getLoading(-1)
+        }
         return root
     }
 

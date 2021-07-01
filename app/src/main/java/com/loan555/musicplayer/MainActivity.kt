@@ -5,8 +5,11 @@ import android.content.*
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.ConnectivityManager
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.os.IBinder
+import android.provider.MediaStore
 import android.util.Log
 import android.view.View
 import android.widget.Toast
@@ -23,9 +26,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okio.BufferedSink
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStream
 import java.lang.Exception
 
 const val NUM_PAGES = 3
@@ -41,6 +50,7 @@ const val PLAYLIST_LIKE = 3
 
 class MainActivity : AppCompatActivity() {
     private val dbHelper = SongReaderDbHelper(this)
+
     //broadcast
     private lateinit var br: BroadcastReceiver
 
@@ -188,6 +198,21 @@ class MainActivity : AppCompatActivity() {
         mainViewModel.textSearch.observe(this, {
             searchSong(it)
         })
+        mainViewModel.pageLoader.observe(this, {
+            when (it) {
+                -1 -> {
+                }
+                0 -> {
+                    loadDataStorage()
+                }
+                1 -> {
+                    loadDataDataChart()
+                }
+                2 -> {
+                    mainViewModel.textSearch.value?.let { it1 -> searchSong(it1) }
+                }
+            }
+        })
         /**
          * Event listener
          */
@@ -284,18 +309,21 @@ class MainActivity : AppCompatActivity() {
     private fun loadDataStorage() {
         Log.d(MY_TAG, "loadDataStorage")
         if (checkStoragePermission()) {
+            mainViewModel.setLoading(true, PLAYLIST_STORAGE)
             GlobalScope.launch(Dispatchers.Main) {
                 val resultOK = async(Dispatchers.IO) {
                     return@async mPlayLists[PLAYLIST_STORAGE].getListFromStorage(this@MainActivity)
                 }
                 if (resultOK.await()) {
                     mainViewModel.readData(mPlayLists[PLAYLIST_STORAGE].playList, PLAYLIST_STORAGE)
-                }
+                    mainViewModel.setLoading(false, PLAYLIST_STORAGE)
+                } else mainViewModel.setLoading(false, PLAYLIST_STORAGE)
             }
         } else requestStoragePermission()
     }
 
     private fun searchSong(name: String) {// get data with key
+        mainViewModel.setLoading(true, PLAYLIST_SEARCH)
         val call = apiSearchService.getCurrentData(typeSearch, num, name)
         call.enqueue(object : Callback<DataSearchResult> {
             override fun onResponse(
@@ -307,11 +335,11 @@ class MainActivity : AppCompatActivity() {
                     try {
                         if (response.body() != null) {
                             if (response.body()?.data != null) {
-                                var dataResponse : DatumSearch? = null
+                                var dataResponse: DatumSearch? = null
                                 try {
                                     dataResponse = response.body()!!.data[0]
-                                }catch (e: Exception){
-                                    Log.e(MY_TAG,"error get data search: ${e.message}")
+                                } catch (e: Exception) {
+                                    Log.e(MY_TAG, "error get data search: ${e.message}")
                                 }
                                 //load du lieu
                                 var count = 0
@@ -324,7 +352,7 @@ class MainActivity : AppCompatActivity() {
                                             it.id,
                                             it.name,
                                             it.artist,
-                                            it.duration.toInt()*1000,
+                                            it.duration.toInt() * 1000,
                                             it.duration.toInt(),
                                             it.name,
                                             "",
@@ -342,14 +370,16 @@ class MainActivity : AppCompatActivity() {
                             mPlayLists[PLAYLIST_SEARCH].playList,
                             mPlayLists[PLAYLIST_SEARCH].id
                         )
-                    }catch (e: ExceptionInInitializerError){
-                        Log.e(MY_TAG,"${e.message}")
+                    } catch (e: ExceptionInInitializerError) {
+                        Log.e(MY_TAG, "${e.message}")
                     }
                 } else Log.e("aaa", "response.code() = ${response.code()}")
+                mainViewModel.setLoading(false, PLAYLIST_SEARCH)
             }
 
             override fun onFailure(call: Call<DataSearchResult>, t: Throwable) {
                 Log.e(MY_TAG, "error getCurrentSongData ${t.message}")
+                mainViewModel.setLoading(false, PLAYLIST_SEARCH)
             }
         })
     }
@@ -361,6 +391,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getListFromApiChart() {
+        mainViewModel.setLoading(true, PLAYLIST_CHART)
         Log.d(MY_TAG, "getCurrentChartData")
         val call = serviceApiGetChart.getCurrentData(
             songId,
@@ -387,7 +418,7 @@ class MainActivity : AppCompatActivity() {
                                 it.id,
                                 it.name,
                                 it.artistsNames,
-                                it.duration.toInt()*1000,
+                                it.duration.toInt() * 1000,
                                 it.duration.toInt(),
                                 it.title,
                                 "it.album.toString()",
@@ -404,10 +435,12 @@ class MainActivity : AppCompatActivity() {
                     )
                     Log.d(MY_TAG, "loadDataChartList success ")
                 } else Log.e("aaa", "response.code() = ${response.code()}")
+                mainViewModel.setLoading(false, PLAYLIST_CHART)
             }
 
             override fun onFailure(call: Call<DataChartResult>, t: Throwable) {
                 Log.e(MY_TAG, "error getCurrentChartData ${t.message}")
+                mainViewModel.setLoading(false, PLAYLIST_CHART)
             }
         })
     }
@@ -467,6 +500,35 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+//    fun download(audio: SongCustom) {
+//        val audioOutStream: OutputStream
+//
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+//            val values = ContentValues()
+//            values.put(MediaStore.Audio.Media.DISPLAY_NAME, "${audio.title}.mp3")
+//            values.put(MediaStore.Audio.Media.MIME_TYPE, "audio/mpeg")
+//            values.put(
+//                MediaStore.Audio.Media.RELATIVE_PATH,
+//                "${Environment.DIRECTORY_MUSIC}/Soundy/"
+//            )
+//            val uri = this.contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
+//            audioOutStream = this.contentResolver.openOutputStream(uri!!)!!
+//        } else {
+//            val audioPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).toString() + "/Soundy/"
+//            val audio = File(audioPath, audio.title!!)
+//            audioOutStream = FileOutputStream(audio)
+//        }
+//
+//        val request = Request.Builder().url(audio.linkUri).build()
+//        val response = OkHttpClient().newCall(request).execute()
+//        val sink: BufferedSink = audioOutStream.sink().buffer()
+//
+//        sink.writeAll(response.body()!!.source())
+//        sink.close()
+//
+//        audioOutStream.close()
+//    }
 
     companion object {
         //http://mp3.zing.vn/xhr/chart-realtime?songId=0&videoId=0&albumId=0&chart=song&time=-1

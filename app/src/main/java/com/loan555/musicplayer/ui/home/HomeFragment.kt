@@ -4,8 +4,11 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.PopupMenu
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
@@ -14,6 +17,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.loan555.musicplayer.MY_TAG
 import com.loan555.musicplayer.PLAYLIST_STORAGE
+import com.loan555.musicplayer.R
 import com.loan555.musicplayer.databinding.FragmentHomeBinding
 import com.loan555.musicplayer.model.AppViewModel
 import com.loan555.musicplayer.model.SongCustom
@@ -52,6 +56,16 @@ class HomeFragment : Fragment(), ListSongAdapter.OnItemClickListener {
             songAdapter = ListSongAdapter(it, this)
             recyclerView.adapter = songAdapter
         })
+        homeViewModel.homeLoading.observe(viewLifecycleOwner, {
+            if (it) binding.progressHome.visibility = View.VISIBLE
+            else binding.progressHome.visibility = View.GONE
+        })
+        binding.swipeRefresh.setOnRefreshListener {
+            Toast.makeText(this.requireContext(), "load", Toast.LENGTH_SHORT).show()
+            homeViewModel.getLoading(0)
+            binding.swipeRefresh.isRefreshing = false
+            homeViewModel.getLoading(-1)
+        }
         Log.d(MY_TAG, "bind viewModel HomeFragment")
         return root
     }
@@ -63,6 +77,26 @@ class HomeFragment : Fragment(), ListSongAdapter.OnItemClickListener {
 
     override fun onItemClick(v: View?, item: SongCustom, position: Int) {
         homeViewModel.playSong(position, PLAYLIST_STORAGE)
+    }
+
+    override fun onLongClick(v: View?, item: SongCustom, position: Int) {
+        val popupMenu = PopupMenu(this.requireContext(), v)
+        popupMenu.inflate(R.menu.popup_menu)
+        popupMenu.setOnMenuItemClickListener {
+            when (it.itemId) {
+                R.id.popup_like -> {
+                    Log.d(MY_TAG, "thêm vào bài hát yêu thích: $item")
+                }
+                R.id.popup_download -> {
+                    Log.d(MY_TAG, "tải về: $item")
+                }
+                R.id.popup_add_playlist -> {
+                    Log.d(MY_TAG, "them vao danh sach phat: $item")
+                }
+            }
+            true
+        }
+        popupMenu.show()
     }
 
     /**

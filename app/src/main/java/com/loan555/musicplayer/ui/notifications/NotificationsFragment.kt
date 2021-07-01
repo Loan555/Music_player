@@ -68,8 +68,17 @@ class NotificationsFragment : Fragment(), ListSongAdapter.OnItemClickListener {
 
         notificationsViewModel.mListSongSearchLiveData.observe(viewLifecycleOwner, Observer {
             // gán binding cho textView để nó theo dõi biến _text
-            recyclerView.adapter = ListSongAdapter(it,this)
+            recyclerView.adapter = ListSongAdapter(it, this)
         })
+        notificationsViewModel.searchLoading.observe(viewLifecycleOwner, {
+            if (it) binding.progressSearch.visibility = View.VISIBLE
+            else binding.progressSearch.visibility = View.GONE
+        })
+        binding.swipeRefresh.setOnRefreshListener {
+            notificationsViewModel.getLoading(2)
+            binding.swipeRefresh.isRefreshing = false
+            notificationsViewModel.getLoading(-2)
+        }
         Log.d(MY_TAG, "bind viewModel SearchFragment")
         return root
     }
@@ -81,5 +90,9 @@ class NotificationsFragment : Fragment(), ListSongAdapter.OnItemClickListener {
 
     override fun onItemClick(v: View?, item: SongCustom, position: Int) {
         notificationsViewModel.playSong(position, PLAYLIST_SEARCH)
+    }
+
+    override fun onLongClick(v: View?, item: SongCustom, position: Int) {
+
     }
 }

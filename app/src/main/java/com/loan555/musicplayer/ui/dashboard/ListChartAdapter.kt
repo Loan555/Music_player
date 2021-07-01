@@ -46,6 +46,7 @@ class ListChartAdapter(
                 holder.songPos.setTextColor(Color.parseColor("#FF03DAC5"))
             2 ->
                 holder.songPos.setTextColor(Color.parseColor("#CF7B00"))
+            else -> holder.songPos.setTextColor(Color.parseColor("#A5A19C"))
         }
         holder.name.text = listSong[position].title
         holder.artist.text = listSong[position].artists
