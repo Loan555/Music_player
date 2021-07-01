@@ -119,47 +119,4 @@ class PlayList {
         return resultOK
     }
 
-    private fun getCurrentSongData(keySong: String) {// get data with key
-        var song: Song? = null
-        val call = AppModel.serviceApiGetSong.getCurrentData(AppModel.type, keySong)
-        call.enqueue(object : Callback<DataSongResult> {
-            override fun onResponse(
-                call: Call<DataSongResult>,
-                response: Response<DataSongResult>
-            ) {
-                if (response.code() == 200) {
-                    val dataResponse = response.body()!!.data
-                    //load du lieu
-                    song = dataResponse
-
-                } else Log.e("aaa", "response.code() = ${response.code()}")
-            }
-
-            override fun onFailure(call: Call<DataSongResult>, t: Throwable) {
-                Log.e(MY_TAG, "error getCurrentSongData ${t.message}")
-            }
-        })
-    }
-
-    companion object {
-        //http://mp3.zing.vn/xhr/chart-realtime?songId=0&videoId=0&albumId=0&chart=song&time=-1
-        val serviceApiGetChart by lazy { ApiChartService.create() }
-        var songId = 0
-        var videoId = 0
-        var albumId = 0
-        var chart = "song"
-        var time = -1
-
-        ////http://mp3.zing.vn/xhr/media/get-source?type=audio&key=kmJHTZHNCVaSmSuymyFHLH
-        val serviceApiGetSong by lazy { ApiSongDataService.create() }
-        var type = "audio"
-        var key = "ZHJmyZkHLzcbAEgyGTbnkGyLhbzchkRsm"// key laf code
-
-        ////http://ac.mp3.zing.vn/complete?type=artist,song,key,code&num=500&query=Anh Thế Giới Và Em
-        val apiSearchService by lazy { ApiSearchService.create() }
-        var typeSearch = "artist,song,key,code"
-        var num = 500.toLong()
-        var query = "Anh Thế Giới Và Em"
-    }
-
 }

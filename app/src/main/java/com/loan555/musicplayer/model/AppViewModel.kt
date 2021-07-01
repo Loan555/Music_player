@@ -9,10 +9,6 @@ import com.loan555.musicplayer.*
 
 class AppViewModel : ViewModel() {
 
-    var _temp = MutableLiveData<String>().apply {
-        value = "bang xep hang"
-    }
-
     /**
      * activity
      */
@@ -44,7 +40,6 @@ class AppViewModel : ViewModel() {
     val isVisible: LiveData<Boolean> = _isVisible
     val songPos: LiveData<Int> = _songPos
     val listPos: LiveData<Int> = _listPos
-    val tem: LiveData<String> = _temp
 
     fun playSong(sP: Int, lP: Int) {
         if (_listPos.value != lP)
@@ -130,7 +125,7 @@ class AppViewModel : ViewModel() {
      */
 
     private val _textSearch = MutableLiveData<String>().apply {
-        value = "Do em vung ve"
+        value = ""
     }
     val textSearch: LiveData<String> = _textSearch
 

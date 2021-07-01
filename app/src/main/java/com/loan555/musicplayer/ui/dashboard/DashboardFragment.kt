@@ -47,9 +47,6 @@ class DashboardFragment : Fragment(), ListChartAdapter.OnItemClickListener {
             recyclerView.adapter = songAdapter
             Log.d(MY_TAG, "songs chart = $it")
         })
-        dashboardViewModel.tem.observe(viewLifecycleOwner, {
-            binding.title.text = it
-        })
         return root
     }
 

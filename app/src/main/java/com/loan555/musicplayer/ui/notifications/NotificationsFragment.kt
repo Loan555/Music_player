@@ -4,21 +4,15 @@ import android.os.Bundle
 import android.util.Log
 import android.view.*
 import android.widget.SearchView
-import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.loan555.musicplayer.*
 import com.loan555.musicplayer.databinding.FragmentNotificationsBinding
 import com.loan555.musicplayer.model.*
-import com.loan555.musicplayer.model.AppModel.Companion.type
 import com.loan555.musicplayer.ui.home.ListSongAdapter
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 import java.lang.Exception
 
 class NotificationsFragment : Fragment(), ListSongAdapter.OnItemClickListener {

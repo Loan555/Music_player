@@ -34,6 +34,8 @@ data class Song(
 
     @SerializedName("artists_names")
     val artistsNames: String,
+    @SerializedName("total")
+    val total: Long,
 
     val performer: String,
     val type: String,

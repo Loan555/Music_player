@@ -4,14 +4,10 @@ import android.Manifest
 import android.content.*
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.ConnectivityManager
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
-import android.util.Size
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -30,10 +26,7 @@ import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import retrofit2.http.Url
-import java.io.IOException
 import java.lang.Exception
-import java.net.URL
 
 const val NUM_PAGES = 3
 const val MY_TAG = "aaa"
@@ -47,6 +40,7 @@ const val PLAYLIST_SEARCH = 2
 const val PLAYLIST_LIKE = 3
 
 class MainActivity : AppCompatActivity() {
+    private val dbHelper = SongReaderDbHelper(this)
     //broadcast
     private lateinit var br: BroadcastReceiver
 
@@ -330,8 +324,8 @@ class MainActivity : AppCompatActivity() {
                                             it.id,
                                             it.name,
                                             it.artist,
+                                            it.duration.toInt()*1000,
                                             it.duration.toInt(),
-                                            280,
                                             it.name,
                                             "",
                                             bitmap,
@@ -393,8 +387,8 @@ class MainActivity : AppCompatActivity() {
                                 it.id,
                                 it.name,
                                 it.artistsNames,
+                                it.duration.toInt()*1000,
                                 it.duration.toInt(),
-                                280,
                                 it.title,
                                 "it.album.toString()",
                                 thumbnail,
