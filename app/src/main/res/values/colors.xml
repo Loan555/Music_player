@@ -10,5 +10,7 @@
     <color name="black_violet">#25092B</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="red">#DA1C0D</color>
     <color name="no_color">#00F44336</color>
+    <color name="ori">#CF7B00</color>
 </resources>

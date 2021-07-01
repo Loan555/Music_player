@@ -3,10 +3,15 @@ package com.loan555.musicplayer
 import android.Manifest
 import android.content.*
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.ConnectivityManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
+import android.util.Size
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -15,22 +20,30 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.viewpager.widget.ViewPager
 import com.loan555.musicplayer.databinding.ActivityMainBinding
-import com.loan555.musicplayer.model.AppViewModel
-import com.loan555.musicplayer.model.SongList
+import com.loan555.musicplayer.model.*
 import com.loan555.musicplayer.service.*
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import retrofit2.http.Url
+import java.io.IOException
+import java.lang.Exception
+import java.net.URL
 
 const val NUM_PAGES = 3
 const val MY_TAG = "aaa"
 const val STORAGE_REQUEST_CODE = 1
 
+
+const val PLAYLIST_NOTHING = -1
 const val PLAYLIST_STORAGE = 0
 const val PLAYLIST_CHART = 1
-const val PLAYLIST_RELATED = 2
+const val PLAYLIST_SEARCH = 2
 const val PLAYLIST_LIKE = 3
 
 class MainActivity : AppCompatActivity() {
@@ -46,12 +59,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
 
     //service
-    companion object {
-        lateinit var mService: MusicControllerService
-        var mBound: Boolean = false
-        var mSongList = SongList()// list storage
-        var mSongListChart = SongList()// list chart
-    }
+    lateinit var mService: MusicControllerService
+    var mBound: Boolean = false
+
+    //data
+    private val mPlayListStorage = PlayList()
+    private val mPlayListChart = PlayList()
+    private val mPlayListRelated = PlayList()
+    private val mPlayLists = ArrayList<PlayList>()// khoi tao mot danh sacsh cacs playList rong
 
     /** Defines callbacks for service binding, passed to bindService()  */
     private val conn = object : ServiceConnection {
@@ -61,8 +76,33 @@ class MainActivity : AppCompatActivity() {
             val binder = service as MusicControllerService.MusicControllerBinder
             mService = binder.getService()
             mBound = true
-            /** load dữ liệu tại đây  */// hamf nayf hiện đang ko nhận giá trị bởi api và view bất đồng bộ
-            loadDataStorage()
+            mainViewModel.listPos.observe(
+                this@MainActivity,
+                {// khi list có thay đổ thì phải load lại data vào listPlaying trong service
+                    if (mBound)
+                        when (it) {
+                            PLAYLIST_STORAGE -> {
+                                Log.d(MY_TAG, "click STORANG LIST")
+                                mService.songs = mPlayLists[PLAYLIST_STORAGE].playList
+                                mService.listPlaying = mPlayLists[PLAYLIST_STORAGE].id
+                            }
+                            PLAYLIST_CHART -> {
+                                Log.d(MY_TAG, "click chart list")
+                                mService.songs = mPlayLists[PLAYLIST_CHART].playList
+                                mService.listPlaying = mPlayLists[PLAYLIST_CHART].id
+                            }
+                            PLAYLIST_SEARCH -> {
+                                Log.d(MY_TAG, "click search list")
+                                mService.songs = mPlayLists[PLAYLIST_SEARCH].playList
+                                mService.listPlaying = mPlayLists[PLAYLIST_SEARCH].id
+                            }
+                        }
+                })
+            mainViewModel.songPos.observe(this@MainActivity, {
+                Log.d(MY_TAG, "click new posision song")
+                if (it >= 0 && it < mService.songs.size)
+                    mService.playSong(it)
+            })
         }
 
         override fun onServiceDisconnected(arg0: ComponentName) {
@@ -76,9 +116,7 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         mainViewModel = ViewModelProvider(this@MainActivity).get(AppViewModel::class.java)
-        //tool bar
         setSupportActionBar(toolbar)
         supportActionBar?.setTitle(R.string.title_home)
 
@@ -153,10 +191,8 @@ class MainActivity : AppCompatActivity() {
                 binding.itemPlaying.visibility = View.VISIBLE
             else binding.itemPlaying.visibility = View.GONE
         })
-        mainViewModel.listPos.observe(this, {
-            when (it) {
-
-            }
+        mainViewModel.textSearch.observe(this, {
+            searchSong(it)
         })
         /**
          * Event listener
@@ -173,7 +209,11 @@ class MainActivity : AppCompatActivity() {
         /**
          * load data
          */
-        loadDataChart()
+        mPlayLists.add(mPlayListStorage)
+        mPlayLists.add(mPlayListChart)
+        mPlayLists.add(mPlayListRelated)
+        loadDataStorage()
+        loadDataDataChart()
     }
 
     override fun onStart() {
@@ -252,39 +292,134 @@ class MainActivity : AppCompatActivity() {
         if (checkStoragePermission()) {
             GlobalScope.launch(Dispatchers.Main) {
                 val resultOK = async(Dispatchers.IO) {
-                    return@async mSongList.getListFromStorage(this@MainActivity)
+                    return@async mPlayLists[PLAYLIST_STORAGE].getListFromStorage(this@MainActivity)
                 }
                 if (resultOK.await()) {
-                    mainViewModel.readData(mSongList.playList, PLAYLIST_STORAGE)
+                    mainViewModel.readData(mPlayLists[PLAYLIST_STORAGE].playList, PLAYLIST_STORAGE)
                 }
             }
         } else requestStoragePermission()
     }
 
-    private fun loadDataChart() {
-        if (checkInternet()) {
-            Log.d(MY_TAG,"loadDataChart")
-            GlobalScope.launch(Dispatchers.Main) {
-                val resultOK = async(Dispatchers.IO) {
-                    return@async mSongListChart.getListFromApiChart(this@MainActivity)
-                }
-                if (resultOK.await()) {
-                    mainViewModel.readData(mSongListChart.playList, PLAYLIST_CHART)
-                    Log.d(MY_TAG,"list chart = ${mainViewModel.mListSongChartLiveData.value}")
-                }else
-                    Log.d(MY_TAG,"can't read chart")
+    private fun searchSong(name: String) {// get data with key
+        val call = apiSearchService.getCurrentData(typeSearch, num, name)
+        call.enqueue(object : Callback<DataSearchResult> {
+            override fun onResponse(
+                call: Call<DataSearchResult>,
+                response: Response<DataSearchResult>
+            ) {
+                if (response.code() == 200) {
+                    mPlayLists[PLAYLIST_SEARCH].playList.clear()
+                    try {
+                        if (response.body() != null) {
+                            if (response.body()?.data != null) {
+                                var dataResponse : DatumSearch? = null
+                                try {
+                                    dataResponse = response.body()!!.data[0]
+                                }catch (e: Exception){
+                                    Log.e(MY_TAG,"error get data search: ${e.message}")
+                                }
+                                //load du lieu
+                                var count = 0
+                                dataResponse?.song?.forEach {
+                                    count++
+                                    if (count > 20) return@forEach
+                                    var bitmap: Bitmap? = null
+                                    mPlayLists[PLAYLIST_SEARCH].playList.add(
+                                        SongCustom(
+                                            it.id,
+                                            it.name,
+                                            it.artist,
+                                            it.duration.toInt(),
+                                            280,
+                                            it.name,
+                                            "",
+                                            bitmap,
+                                            false,
+                                            "http://api.mp3.zing.vn/api/streaming/audio/${it.id}/320"
+                                        )
+                                    )
+                                }
+                            }
+                        }
+
+                        mPlayLists[PLAYLIST_SEARCH].id = PLAYLIST_SEARCH
+                        mainViewModel.readData(
+                            mPlayLists[PLAYLIST_SEARCH].playList,
+                            mPlayLists[PLAYLIST_SEARCH].id
+                        )
+                    }catch (e: ExceptionInInitializerError){
+                        Log.e(MY_TAG,"${e.message}")
+                    }
+                } else Log.e("aaa", "response.code() = ${response.code()}")
             }
+
+            override fun onFailure(call: Call<DataSearchResult>, t: Throwable) {
+                Log.e(MY_TAG, "error getCurrentSongData ${t.message}")
+            }
+        })
+    }
+
+    private fun loadDataDataChart() {
+        if (checkInternet()) {
+            getListFromApiChart()
         } else Toast.makeText(this, "Không có kết nối mạng", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun getListFromApiChart() {
+        Log.d(MY_TAG, "getCurrentChartData")
+        val call = serviceApiGetChart.getCurrentData(
+            songId,
+            videoId,
+            albumId,
+            chart,
+            time
+        )
+        call.enqueue(object : Callback<DataChartResult> {
+            override fun onResponse(
+                call: Call<DataChartResult>,
+                response: Response<DataChartResult>
+            ) {
+                if (response.code() == 200) {
+                    Log.d(MY_TAG, "response.code() == 200")
+                    mPlayLists[PLAYLIST_CHART].playList.clear()
+                    val dataResponse = response.body()!!
+                    val listChart = dataResponse.data
+                    listChart.song.forEach {
+                        // Load thumbnail of a specific media item.
+                        val thumbnail = null
+                        mPlayLists[PLAYLIST_CHART].playList.add(
+                            SongCustom(
+                                it.id,
+                                it.name,
+                                it.artistsNames,
+                                it.duration.toInt(),
+                                280,
+                                it.title,
+                                "it.album.toString()",
+                                thumbnail,
+                                false,
+                                "http://api.mp3.zing.vn/api/streaming/audio/${it.id}/320"
+                            )
+                        )
+                    }
+                    mPlayLists[PLAYLIST_CHART].id = PLAYLIST_CHART
+                    mainViewModel.readData(
+                        mPlayLists[PLAYLIST_CHART].playList,
+                        mPlayLists[PLAYLIST_CHART].id
+                    )
+                    Log.d(MY_TAG, "loadDataChartList success ")
+                } else Log.e("aaa", "response.code() = ${response.code()}")
+            }
+
+            override fun onFailure(call: Call<DataChartResult>, t: Throwable) {
+                Log.e(MY_TAG, "error getCurrentChartData ${t.message}")
+            }
+        })
     }
 
     private fun checkInternet(): Boolean {
         return true
-    }
-
-    private fun handViewItem() {
-        val item = mService.songs[mService.songPos]
-        val isPlaying = mService.isPng() == true
-        mainViewModel.initItemPlaying(item.bitmap, item.title, item.artists, isPlaying)
     }
 
     private fun handBtnPlayPause() {
@@ -320,6 +455,7 @@ class MainActivity : AppCompatActivity() {
                 if (mBound)
                     unbindService(conn)
                 mainViewModel.handStop()
+                mainViewModel.listPos
             }
             ACTION_PLAY, ACTION_NEXT, ACTION_BACK -> {
                 if (!mBound) {
@@ -336,5 +472,26 @@ class MainActivity : AppCompatActivity() {
                 else handActionMusic(ACTION_PAUSE)
             }
         }
+    }
+
+    companion object {
+        //http://mp3.zing.vn/xhr/chart-realtime?songId=0&videoId=0&albumId=0&chart=song&time=-1
+        val serviceApiGetChart by lazy { ApiChartService.create() }
+        var songId = 0
+        var videoId = 0
+        var albumId = 0
+        var chart = "song"
+        var time = -1
+
+        ////http://mp3.zing.vn/xhr/media/get-source?type=audio&key=kmJHTZHNCVaSmSuymyFHLH
+        val serviceApiGetSong by lazy { ApiSongDataService.create() }
+        var type = "audio"
+        var key = "ZHJmyZkHLzcbAEgyGTbnkGyLhbzchkRsm"// key laf code
+
+        ////http://ac.mp3.zing.vn/complete?type=artist,song,key,code&num=500&query=Anh Thế Giới Và Em
+        val apiSearchService by lazy { ApiSearchService.create() }
+        var typeSearch = "artist,song,key,code"
+        var num = 500.toLong()
+        var query = "Anh Thế Giới Và Em"
     }
 }

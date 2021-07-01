@@ -211,8 +211,6 @@ class MusicControllerService : Service() {
                 playNext()
             }
             ACTION_STOP -> {
-                Log.d(MY_TAG, "stop fogero service")
-//                unregisterReceiver(br)
                 stopSelf()
             }
             ACTION_PLAY_PAUSE -> {

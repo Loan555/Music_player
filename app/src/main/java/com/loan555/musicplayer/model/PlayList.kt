@@ -10,6 +10,8 @@ import android.util.Log
 import android.util.Size
 import com.loan555.musicplayer.MY_TAG
 import com.loan555.musicplayer.PLAYLIST_CHART
+import com.loan555.musicplayer.PLAYLIST_NOTHING
+import com.loan555.musicplayer.PLAYLIST_STORAGE
 import com.loan555.musicplayer.service.ApiChartService
 import com.loan555.musicplayer.service.ApiSearchService
 import com.loan555.musicplayer.service.ApiSongDataService
@@ -19,10 +21,9 @@ import retrofit2.Response
 import java.io.IOException
 import java.lang.Exception
 
-class SongList() {
-    var playList: ArrayList<SongCustom> = ArrayList()
-    var listID = -1
-
+class PlayList {
+    var playList = ArrayList<SongCustom>()
+    var id: Int = PLAYLIST_NOTHING
     fun getListFromStorage(context: Context): Boolean {
         var resultOK = false
         val collection: Uri =
@@ -110,7 +111,7 @@ class SongList() {
                 }
             }
             playList = newSongs
-            listID = 0
+            id = PLAYLIST_STORAGE
             resultOK = true
         } catch (e: Exception) {
             Log.e(MY_TAG, "error getListFromStorage: ${e.message}")
@@ -118,54 +119,24 @@ class SongList() {
         return resultOK
     }
 
-    fun getListFromApiChart(context: Context, viewModel: AppViewModel) {
-        Log.d(MY_TAG, "getCurrentChartData")
-        val call = serviceApiGetChart.getCurrentData(songId, videoId, albumId, chart, time)
-        call.enqueue(object : Callback<DataChartResult> {
+    private fun getCurrentSongData(keySong: String) {// get data with key
+        var song: Song? = null
+        val call = AppModel.serviceApiGetSong.getCurrentData(AppModel.type, keySong)
+        call.enqueue(object : Callback<DataSongResult> {
             override fun onResponse(
-                call: Call<DataChartResult>,
-                response: Response<DataChartResult>
+                call: Call<DataSongResult>,
+                response: Response<DataSongResult>
             ) {
                 if (response.code() == 200) {
-                    Log.d(MY_TAG, "response.code() == 200")
-                    val dataResponse = response.body()!!
-                    val listChart = dataResponse.data
-                    listChart.song.forEach {
-                        // Load thumbnail of a specific media item.
-                        var thumbnail: Bitmap? = null
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            try {
-                                val thumb =
-                                    context.applicationContext.contentResolver.loadThumbnail(
-                                        Uri.parse(it.thumbnail), Size(640, 480), null
-                                    )
-                                thumbnail = thumb
-                            } catch (e: IOException) {
-                            }
-                        }
-                        playList.add(
-                            SongCustom(
-                                it.id,
-                                it.name,
-                                it.artistsNames,
-                                it.duration.toInt(),
-                                280,
-                                it.title,
-                                "it.album.toString()",
-                                thumbnail,
-                                false,
-                                "http://api.mp3.zing.vn/api/streaming/audio/${it.id}/320"
-                            )
-                        )
-                    }
-                    listID = PLAYLIST_CHART
-                    viewModel.readData(playList, listID)
-                    Log.d(MY_TAG, "loadDataChartList success $playList")
+                    val dataResponse = response.body()!!.data
+                    //load du lieu
+                    song = dataResponse
+
                 } else Log.e("aaa", "response.code() = ${response.code()}")
             }
 
-            override fun onFailure(call: Call<DataChartResult>, t: Throwable) {
-                Log.e(MY_TAG, "error getCurrentChartData ${t.message}")
+            override fun onFailure(call: Call<DataSongResult>, t: Throwable) {
+                Log.e(MY_TAG, "error getCurrentSongData ${t.message}")
             }
         })
     }
@@ -190,8 +161,5 @@ class SongList() {
         var num = 500.toLong()
         var query = "Anh Thế Giới Và Em"
     }
-}
 
-/**
- * các play list
- */
+}

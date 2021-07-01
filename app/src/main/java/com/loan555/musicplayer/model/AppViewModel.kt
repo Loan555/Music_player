@@ -5,12 +5,14 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.loan555.musicplayer.MY_TAG
-import com.loan555.musicplayer.PLAYLIST_CHART
-import com.loan555.musicplayer.PLAYLIST_STORAGE
-import com.loan555.musicplayer.R
+import com.loan555.musicplayer.*
 
 class AppViewModel : ViewModel() {
+
+    var _temp = MutableLiveData<String>().apply {
+        value = "bang xep hang"
+    }
+
     /**
      * activity
      */
@@ -33,7 +35,7 @@ class AppViewModel : ViewModel() {
         value = -1
     }
     private var _listPos = MutableLiveData<Int>().apply {
-        value = -1
+        value = PLAYLIST_NOTHING
     }
     val itemPlayingImg: LiveData<Bitmap> = _itemPlayingImg
     val title: LiveData<String> = _title
@@ -42,10 +44,12 @@ class AppViewModel : ViewModel() {
     val isVisible: LiveData<Boolean> = _isVisible
     val songPos: LiveData<Int> = _songPos
     val listPos: LiveData<Int> = _listPos
+    val tem: LiveData<String> = _temp
 
     fun playSong(sP: Int, lP: Int) {
+        if (_listPos.value != lP)
+            _listPos.value = lP
         _songPos.value = sP
-        _listPos.value = lP
     }
 
     fun initItemPlaying(img: Bitmap?, title: String, artist: String, isPlaying: Boolean) {
@@ -66,16 +70,17 @@ class AppViewModel : ViewModel() {
 
     fun handStop() {
         _isVisible.value = false
+        _listPos.value = PLAYLIST_NOTHING
+        _songPos.value = -1
     }
 
-    fun handPlay() {
+    private fun handPlay() {
         _isVisible.value = true
     }
 
     /**
      * home fragmentViewModel
      */
-    val imgDefault = R.drawable.musical_note_icon
     private val listTemp = ArrayList<SongCustom>()
 
     private val _mListSongLiveData = MutableLiveData<ArrayList<SongCustom>>().apply {
@@ -84,19 +89,12 @@ class AppViewModel : ViewModel() {
     private val _mListSongChartLiveData = MutableLiveData<ArrayList<SongCustom>>().apply {
         value = listTemp
     }
+    private val _mListSongSearchLiveData = MutableLiveData<ArrayList<SongCustom>>().apply {
+        value = listTemp
+    }
     val mListSongLiveData: MutableLiveData<ArrayList<SongCustom>> = _mListSongLiveData
     val mListSongChartLiveData: MutableLiveData<ArrayList<SongCustom>> = _mListSongChartLiveData
-
-    fun addData(song: SongCustom, playListID: Int) {
-        when (playListID) {
-            PLAYLIST_STORAGE -> {
-                listTemp.add(song)
-                _mListSongLiveData.apply {
-                    value = listTemp
-                }
-            }
-        }
-    }
+    val mListSongSearchLiveData: MutableLiveData<ArrayList<SongCustom>> = _mListSongSearchLiveData
 
     fun readData(songs: ArrayList<SongCustom>, playListID: Int) {
         when (playListID) {
@@ -105,8 +103,13 @@ class AppViewModel : ViewModel() {
                     value = songs
                 }
             }
-            PLAYLIST_CHART ->{
+            PLAYLIST_CHART -> {
                 _mListSongChartLiveData.apply {
+                    value = songs
+                }
+            }
+            PLAYLIST_SEARCH -> {
+                _mListSongSearchLiveData.apply {
                     value = songs
                 }
             }
@@ -126,16 +129,16 @@ class AppViewModel : ViewModel() {
      * notificationViewModel
      */
 
-    val _text2 = MutableLiveData<String>().apply {
-        value = "This is notifications Fragment"
+    private val _textSearch = MutableLiveData<String>().apply {
+        value = "Do em vung ve"
     }
-    val text2: LiveData<String> = _text2
+    val textSearch: LiveData<String> = _textSearch
 
     /**
      *
      */
     fun getLoad(str: String) {
-        _text.value = str
+        _textSearch.value = str
     }
 }
 

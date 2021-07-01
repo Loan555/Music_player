@@ -13,7 +13,7 @@ import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.loan555.musicplayer.MY_TAG
-import com.loan555.musicplayer.MainActivity
+import com.loan555.musicplayer.PLAYLIST_STORAGE
 import com.loan555.musicplayer.databinding.FragmentHomeBinding
 import com.loan555.musicplayer.model.AppViewModel
 import com.loan555.musicplayer.model.SongCustom
@@ -62,36 +62,10 @@ class HomeFragment : Fragment(), ListSongAdapter.OnItemClickListener {
     }
 
     override fun onItemClick(v: View?, item: SongCustom, position: Int) {
-        if (MainActivity.mService.listPlaying != MainActivity.mSongList.listID) {// neu list playing in service is != list offline
-            MainActivity.mService.songs = MainActivity.mSongList.playList
-            Log.d(MY_TAG, "list playing is: storage")
-        } else MainActivity.mService.songs = MainActivity.mSongList.playList
-        MainActivity.mService.player?.setOnCompletionListener {
-            MainActivity.mService.playNext()
-            homeViewModel.initItemPlaying(
-                MainActivity.mService.songs[MainActivity.mService.songPos].bitmap,
-                MainActivity.mService.songs[MainActivity.mService.songPos].title,
-                MainActivity.mService.songs[MainActivity.mService.songPos].artists,
-                MainActivity.mService.isPng() == true
-            )
-        }
-        MainActivity.mService.playSong(position)
-        homeViewModel.initItemPlaying(
-            item.bitmap,
-            item.title,
-            item.artists,
-            MainActivity.mService.isPng() == true
-        )
+        homeViewModel.playSong(position, PLAYLIST_STORAGE)
     }
 
     /**
      * Data Storage
      */
-
-    private fun checkPermissionStorage(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this.requireContext(),
-            android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-        ) == (PackageManager.PERMISSION_GRANTED)
-    }
 }
