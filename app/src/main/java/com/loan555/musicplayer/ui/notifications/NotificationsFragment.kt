@@ -1,9 +1,16 @@
 package com.loan555.musicplayer.ui.notifications
 
+import android.app.DownloadManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import android.view.*
+import android.widget.PopupMenu
 import android.widget.SearchView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
@@ -13,6 +20,7 @@ import com.loan555.musicplayer.*
 import com.loan555.musicplayer.databinding.FragmentNotificationsBinding
 import com.loan555.musicplayer.model.*
 import com.loan555.musicplayer.ui.home.ListSongAdapter
+import java.io.File
 import java.lang.Exception
 
 class NotificationsFragment : Fragment(), ListSongAdapter.OnItemClickListener {
@@ -93,6 +101,24 @@ class NotificationsFragment : Fragment(), ListSongAdapter.OnItemClickListener {
     }
 
     override fun onLongClick(v: View?, item: SongCustom, position: Int) {
-
+        val popupMenu = PopupMenu(this.requireContext(), v)
+        popupMenu.inflate(R.menu.popup_menu)
+        popupMenu.setOnMenuItemClickListener {
+            when (it.itemId) {
+                R.id.popup_like -> {
+                    Log.d(MY_TAG, "thêm vào bài hát yêu thích: $item")
+                }
+                R.id.popup_download -> {
+                    Log.d(MY_TAG, "tải về: $item")
+                    notificationsViewModel.sentDownLoad(item)
+                }
+                R.id.popup_add_playlist -> {
+                    Log.d(MY_TAG, "them vao danh sach phat: $item")
+                }
+            }
+            true
+        }
+        popupMenu.show()
     }
+
 }

@@ -17,7 +17,7 @@ class ListChartAdapter(
     RecyclerView.Adapter<ListChartAdapter.MyViewHolder>() {
 
     inner class MyViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView),
-        View.OnClickListener {
+        View.OnClickListener, View.OnLongClickListener {
         val songPos: TextView = itemView.findViewById(R.id.position)
         val name: TextView = itemView.findViewById(R.id.song_name)
         val artist: TextView = itemView.findViewById(R.id.artists_names)
@@ -26,10 +26,16 @@ class ListChartAdapter(
 
         init {
             itemView.setOnClickListener(this)
+            itemView.setOnLongClickListener(this)
         }
 
         override fun onClick(v: View?) {
             listener.onItemClick(v, listSong[layoutPosition], layoutPosition)
+        }
+
+        override fun onLongClick(v: View?): Boolean {
+            listener.onItemLongClick(v, listSong[layoutPosition], layoutPosition)
+            return true
         }
     }
 
@@ -59,6 +65,6 @@ class ListChartAdapter(
 
     interface OnItemClickListener {
         fun onItemClick(v: View?, item: SongCustom, position: Int)
-
+        fun onItemLongClick(v: View?, item: SongCustom, position: Int)
     }
 }

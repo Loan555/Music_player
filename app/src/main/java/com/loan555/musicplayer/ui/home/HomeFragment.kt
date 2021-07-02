@@ -81,14 +81,11 @@ class HomeFragment : Fragment(), ListSongAdapter.OnItemClickListener {
 
     override fun onLongClick(v: View?, item: SongCustom, position: Int) {
         val popupMenu = PopupMenu(this.requireContext(), v)
-        popupMenu.inflate(R.menu.popup_menu)
+        popupMenu.inflate(R.menu.local_popup)
         popupMenu.setOnMenuItemClickListener {
             when (it.itemId) {
                 R.id.popup_like -> {
                     Log.d(MY_TAG, "thêm vào bài hát yêu thích: $item")
-                }
-                R.id.popup_download -> {
-                    Log.d(MY_TAG, "tải về: $item")
                 }
                 R.id.popup_add_playlist -> {
                     Log.d(MY_TAG, "them vao danh sach phat: $item")

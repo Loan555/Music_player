@@ -5,6 +5,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.PopupMenu
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
@@ -12,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.loan555.musicplayer.MY_TAG
 import com.loan555.musicplayer.PLAYLIST_CHART
+import com.loan555.musicplayer.R
 import com.loan555.musicplayer.databinding.FragmentDashboardBinding
 import com.loan555.musicplayer.model.*
 import java.lang.Exception
@@ -66,5 +68,26 @@ class DashboardFragment : Fragment(), ListChartAdapter.OnItemClickListener {
 
     override fun onItemClick(v: View?, item: SongCustom, position: Int) {
         dashboardViewModel.playSong(position, PLAYLIST_CHART)
+    }
+
+    override fun onItemLongClick(v: View?, item: SongCustom, position: Int) {
+        val popupMenu = PopupMenu(this.requireContext(), v)
+        popupMenu.inflate(R.menu.popup_menu)
+        popupMenu.setOnMenuItemClickListener {
+            when (it.itemId) {
+                R.id.popup_like -> {
+                    Log.d(MY_TAG, "thêm vào bài hát yêu thích: $item")
+                }
+                R.id.popup_download -> {
+                    Log.d(MY_TAG, "tải về: $item")
+                    dashboardViewModel.sentDownLoad(item)
+                }
+                R.id.popup_add_playlist -> {
+                    Log.d(MY_TAG, "them vao danh sach phat: $item")
+                }
+            }
+            true
+        }
+        popupMenu.show()
     }
 }

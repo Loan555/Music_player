@@ -11,6 +11,7 @@ class AppViewModel : ViewModel() {
     /**
      * activity
      */
+
     private val _itemPlayingImg = MutableLiveData<Bitmap>().apply {
         value = null
     }
@@ -44,6 +45,9 @@ class AppViewModel : ViewModel() {
     private val _pageLoader = MutableLiveData<Int>().apply {
         value = -1
     }
+    private var _songDownload = MutableLiveData<SongCustom>().apply {
+        value = null
+    }
     val itemPlayingImg: LiveData<Bitmap> = _itemPlayingImg
     val title: LiveData<String> = _title
     val artist: LiveData<String> = _artist
@@ -55,6 +59,11 @@ class AppViewModel : ViewModel() {
     val homeLoading: LiveData<Boolean> = _homeLoading
     val searchLoading: LiveData<Boolean> = _searchLoading
     val pageLoader: LiveData<Int> = _pageLoader
+    val songDownload : LiveData<SongCustom> = _songDownload
+
+    fun sentDownLoad(item: SongCustom){
+        _songDownload.value = item
+    }
 
     fun getLoading(pageNumber: Int){
         _pageLoader.value = pageNumber

@@ -1,15 +1,14 @@
 package com.loan555.musicplayer
 
 import android.Manifest
+import android.R.attr.name
+import android.app.DownloadManager
 import android.content.*
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.ConnectivityManager
-import android.os.Build
-import android.os.Bundle
-import android.os.Environment
-import android.os.IBinder
-import android.provider.MediaStore
+import android.net.Uri
+import android.os.*
 import android.util.Log
 import android.view.View
 import android.widget.Toast
@@ -26,16 +25,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okio.BufferedSink
+import okhttp3.*
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import java.io.File
-import java.io.FileOutputStream
-import java.io.OutputStream
-import java.lang.Exception
+import java.io.*
+
 
 const val NUM_PAGES = 3
 const val MY_TAG = "aaa"
@@ -211,6 +206,11 @@ class MainActivity : AppCompatActivity() {
                 2 -> {
                     mainViewModel.textSearch.value?.let { it1 -> searchSong(it1) }
                 }
+            }
+        })
+        mainViewModel.songDownload.observe(this, {
+            if (it != null) {
+                downLoad(it)
             }
         })
         /**
@@ -501,34 +501,40 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-//    fun download(audio: SongCustom) {
-//        val audioOutStream: OutputStream
-//
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-//            val values = ContentValues()
-//            values.put(MediaStore.Audio.Media.DISPLAY_NAME, "${audio.title}.mp3")
-//            values.put(MediaStore.Audio.Media.MIME_TYPE, "audio/mpeg")
-//            values.put(
-//                MediaStore.Audio.Media.RELATIVE_PATH,
-//                "${Environment.DIRECTORY_MUSIC}/Soundy/"
-//            )
-//            val uri = this.contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
-//            audioOutStream = this.contentResolver.openOutputStream(uri!!)!!
-//        } else {
-//            val audioPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).toString() + "/Soundy/"
-//            val audio = File(audioPath, audio.title!!)
-//            audioOutStream = FileOutputStream(audio)
-//        }
-//
-//        val request = Request.Builder().url(audio.linkUri).build()
-//        val response = OkHttpClient().newCall(request).execute()
-//        val sink: BufferedSink = audioOutStream.sink().buffer()
-//
-//        sink.writeAll(response.body()!!.source())
-//        sink.close()
-//
-//        audioOutStream.close()
-//    }
+    private fun downLoad(item: SongCustom) {
+        var dir = Environment.DIRECTORY_MUSIC
+        dir += "/klp"
+        val fileDir = File(dir)
+        if (!fileDir.isDirectory) {
+            fileDir.mkdir()
+        }
+        Toast.makeText(
+            this, "Download song " + item.title,
+            Toast.LENGTH_SHORT
+        ).show()
+        // Download File
+        // Download File
+        val request = DownloadManager.Request(
+            Uri.parse(item.linkUri)
+        )
+        request.setDescription(item.name)
+        request.setTitle(item.title)
+        // in order for this if to run, you must use the android 3.2 to
+        // compile your app
+        // in order for this if to run, you must use the android 3.2 to
+        // compile your app
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+            request.allowScanningByMediaScanner()
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+        }
+        request.setDestinationInExternalPublicDir(dir, "nameFile.mp3")
+
+        // get download service and enqueue file
+
+        // get download service and enqueue file
+        val manager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+        manager.enqueue(request)
+    }
 
     companion object {
         //http://mp3.zing.vn/xhr/chart-realtime?songId=0&videoId=0&albumId=0&chart=song&time=-1
