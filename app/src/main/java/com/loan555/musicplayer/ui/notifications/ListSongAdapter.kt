@@ -1,4 +1,4 @@
-package com.loan555.musicplayer.ui.dashboard
+package com.loan555.musicplayer.ui.notifications
 
 import android.content.Context
 import android.graphics.Color
@@ -12,16 +12,15 @@ import com.bumptech.glide.Glide
 import com.loan555.musicplayer.R
 import com.loan555.musicplayer.model.SongCustom
 
-class ListChartAdapter(
+class ListSongAdapter(
     private val context: Context,
     private val listSong: ArrayList<SongCustom>,
     val listener: OnItemClickListener
 ) :
-    RecyclerView.Adapter<ListChartAdapter.MyViewHolder>() {
+    RecyclerView.Adapter<ListSongAdapter.MyViewHolder>() {
 
     inner class MyViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView),
         View.OnClickListener, View.OnLongClickListener {
-        val songPos: TextView = itemView.findViewById(R.id.position)
         val name: TextView = itemView.findViewById(R.id.song_name)
         val artist: TextView = itemView.findViewById(R.id.artists_names)
         val img: ImageView = itemView.findViewById(R.id.img_song)
@@ -43,20 +42,10 @@ class ListChartAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MyViewHolder = MyViewHolder(
-        LayoutInflater.from(parent.context).inflate(R.layout.chart_adapter, parent, false)
+        LayoutInflater.from(parent.context).inflate(R.layout.song_adapter, parent, false)
     )
 
     override fun onBindViewHolder(holder: MyViewHolder, position: Int) {
-        holder.songPos.text = "${position + 1}"
-        when (position) {
-            0 ->
-                holder.songPos.setTextColor(Color.parseColor("#FF6200EE"))
-            1 ->
-                holder.songPos.setTextColor(Color.parseColor("#FF03DAC5"))
-            2 ->
-                holder.songPos.setTextColor(Color.parseColor("#CF7B00"))
-            else -> holder.songPos.setTextColor(Color.parseColor("#A5A19C"))
-        }
         holder.name.text = listSong[position].title
         holder.artist.text = listSong[position].artists
 

@@ -12,6 +12,7 @@ data class SongCustom(
     val title: String,
     val albums: String,
     val bitmap: Bitmap?,
+    val thumbnail: String?,
     val isLocal: Boolean,// online hay offline
     val linkUri: String,// để chơi nhạc
 ) : Serializable {

@@ -1,9 +1,11 @@
 package com.loan555.musicplayer.model
 
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.bumptech.glide.Glide
 import com.loan555.musicplayer.*
 
 class AppViewModel : ViewModel() {
@@ -14,6 +16,9 @@ class AppViewModel : ViewModel() {
 
     private val _itemPlayingImg = MutableLiveData<Bitmap>().apply {
         value = null
+    }
+    private val _isStop = MutableLiveData<Boolean>().apply {
+        value = true
     }
     private val _title = MutableLiveData<String>().apply {
         value = ""
@@ -48,6 +53,30 @@ class AppViewModel : ViewModel() {
     private var _songDownload = MutableLiveData<SongCustom>().apply {
         value = null
     }
+    private var _statePlay = MutableLiveData<Int>().apply {
+        value = 0
+    }
+    private var _actionMusic = MutableLiveData<Int>().apply {
+        value = 0//=0 thi ko co action nao
+    }
+    private var _seekbarPos = MutableLiveData<Int>().apply {
+        value = 0//=0 thi ko co action nao
+    }
+    private var _seekbarMax = MutableLiveData<Int>().apply {
+        value = 0//=0 thi ko co action nao
+    }
+    private var _btnLoadClick = MutableLiveData<Int>().apply {
+        value = 0//=0 thi ko co action nao
+    }
+    private var _optionClick = MutableLiveData<Int>().apply {
+        value = 0//=0 thi ko co action nao
+    }
+    private var _btnLikeListClick = MutableLiveData<Int>().apply {
+        value = 0//=0 thi ko co action nao
+    }
+    private var _likeSong = MutableLiveData<SongCustom>().apply {
+        value = null//=0 thi ko co action nao
+    }
     val itemPlayingImg: LiveData<Bitmap> = _itemPlayingImg
     val title: LiveData<String> = _title
     val artist: LiveData<String> = _artist
@@ -59,13 +88,59 @@ class AppViewModel : ViewModel() {
     val homeLoading: LiveData<Boolean> = _homeLoading
     val searchLoading: LiveData<Boolean> = _searchLoading
     val pageLoader: LiveData<Int> = _pageLoader
-    val songDownload : LiveData<SongCustom> = _songDownload
+    val songDownload: LiveData<SongCustom> = _songDownload
+    val statePlay: LiveData<Int> = _statePlay
+    val actionMusic: LiveData<Int> = _actionMusic
+    val seekbarPos: LiveData<Int> = _seekbarPos
+    val seekbarMax: LiveData<Int> = _seekbarMax
+    val btnLoadClick: LiveData<Int> = _btnLoadClick
+    val isStop: LiveData<Boolean> = _isStop
+    val optionClick: LiveData<Int> = _optionClick
+    val likeSong: LiveData<SongCustom> = _likeSong
+    val btnLikeClick: LiveData<Int> = _btnLikeListClick
 
-    fun sentDownLoad(item: SongCustom){
+    fun setBtnLikeClick(){
+        _btnLikeListClick.value = 0
+    }
+
+    fun setOptionClick(option: Int, item: SongCustom) {
+        when (option) {
+            R.id.popup_like -> {
+                Log.d(MY_TAG,"item = $item")
+                _likeSong.value = item
+            }
+        }
+    }
+
+    fun setStopPlayer(isTop: Boolean) {
+        _isStop.value = isTop
+    }
+
+    fun loadClick() {
+        _btnLoadClick.value = _btnLoadClick.value?.plus(1)
+    }
+
+    fun seekBarChange(newPos: Int) {
+        _seekbarPos.value = newPos
+    }
+
+    fun seekBarSer(duration: Int) {
+        _seekbarMax.value = duration
+    }
+
+    fun sentActionMusic(action: Int) {
+        _actionMusic.value = action
+    }
+
+    fun setStatePlay(state: Int) {
+        _statePlay.value = state % 4
+    }
+
+    fun sentDownLoad(item: SongCustom) {
         _songDownload.value = item
     }
 
-    fun getLoading(pageNumber: Int){
+    fun getLoading(pageNumber: Int) {
         _pageLoader.value = pageNumber
     }
 
@@ -77,7 +152,7 @@ class AppViewModel : ViewModel() {
             PLAYLIST_SEARCH -> {
                 _searchLoading.value = isLoading
             }
-            PLAYLIST_STORAGE -> {
+            PLAYLIST_STORAGE, PLAYLIST_RELATED -> {
                 _homeLoading.value = isLoading
             }
         }
@@ -91,7 +166,9 @@ class AppViewModel : ViewModel() {
 
     fun initItemPlaying(img: Bitmap?, title: String, artist: String, isPlaying: Boolean) {
         handPlay()
-        _itemPlayingImg.value = img
+        if (img != null) {
+            _itemPlayingImg.value = img
+        }
         _title.value = title
         _artist.value = artist
         _isPlaying.value = isPlaying
@@ -129,9 +206,17 @@ class AppViewModel : ViewModel() {
     private val _mListSongSearchLiveData = MutableLiveData<ArrayList<SongCustom>>().apply {
         value = listTemp
     }
+    private val _mListSongRelateLiveData = MutableLiveData<ArrayList<SongCustom>>().apply {
+        value = listTemp
+    }
+    private val _mListSongLikeLiveData = MutableLiveData<ArrayList<SongCustom>>().apply {
+        value = listTemp
+    }
     val mListSongLiveData: MutableLiveData<ArrayList<SongCustom>> = _mListSongLiveData
     val mListSongChartLiveData: MutableLiveData<ArrayList<SongCustom>> = _mListSongChartLiveData
     val mListSongSearchLiveData: MutableLiveData<ArrayList<SongCustom>> = _mListSongSearchLiveData
+    val mListSongRelateLiveData: MutableLiveData<ArrayList<SongCustom>> = _mListSongRelateLiveData
+    val mListSongLikeLiveData: MutableLiveData<ArrayList<SongCustom>> = _mListSongLikeLiveData
 
     fun readData(songs: ArrayList<SongCustom>, playListID: Int) {
         when (playListID) {
@@ -147,6 +232,16 @@ class AppViewModel : ViewModel() {
             }
             PLAYLIST_SEARCH -> {
                 _mListSongSearchLiveData.apply {
+                    value = songs
+                }
+            }
+            PLAYLIST_RELATED -> {
+                _mListSongRelateLiveData.apply {
+                    value = songs
+                }
+            }
+            PLAYLIST_Like->{
+                _mListSongLikeLiveData.apply {
                     value = songs
                 }
             }

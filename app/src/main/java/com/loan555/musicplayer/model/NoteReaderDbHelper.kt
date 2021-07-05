@@ -18,35 +18,37 @@ val linkUri: String,// để chơi nhạc
  */
 
 
-object NoteReaderContract {
+object SongReaderContract {
     // Table contents are grouped together in an anonymous object.
-    object NoteEntry : BaseColumns {
+    object SongEntry : BaseColumns {
         const val TABLE_NAME = "entry"
 
-        const val COLUMN_ID = "id"
+        const val COLUMN_ID = "myID"
         const val COLUMN_NAME = "name"
         const val COLUMN_ARTISTS = "artists"
         const val COLUMN_DURATION = "duration"
         const val COLUMN_SIZE = "size"
         const val COLUMN_TITLE = "title"
         const val COLUMN_ALBUMS = "albums"
+        const val COLUMN_THUMBNAIL = "thumbnail"
         const val COLUMN_URL = "linkUri"
     }
 }
 
-private const val SQL_CREATE_ENTRIES = "CREATE TABLE ${NoteReaderContract.NoteEntry.TABLE_NAME}(" +
+private const val SQL_CREATE_ENTRIES = "CREATE TABLE ${SongReaderContract.SongEntry.TABLE_NAME}(" +
         "${BaseColumns._ID} INTEGER PRIMARY KEY," +
-        "${NoteReaderContract.NoteEntry.COLUMN_ID} TEXT," +
-        "${NoteReaderContract.NoteEntry.COLUMN_NAME} TEXT," +
-        "${NoteReaderContract.NoteEntry.COLUMN_ARTISTS} TEXT,)" +
-        "${NoteReaderContract.NoteEntry.COLUMN_DURATION} TEXT,)" +
-        "${NoteReaderContract.NoteEntry.COLUMN_SIZE} TEXT,)" +
-        "${NoteReaderContract.NoteEntry.COLUMN_TITLE} TEXT,)" +
-        "${NoteReaderContract.NoteEntry.COLUMN_ALBUMS} TEXT,)" +
-        "${NoteReaderContract.NoteEntry.COLUMN_URL} TEXT)"
+        "${SongReaderContract.SongEntry.COLUMN_ID} TEXT," +
+        "${SongReaderContract.SongEntry.COLUMN_NAME} TEXT," +
+        "${SongReaderContract.SongEntry.COLUMN_ARTISTS} TEXT," +
+        "${SongReaderContract.SongEntry.COLUMN_DURATION} TEXT," +
+        "${SongReaderContract.SongEntry.COLUMN_SIZE} TEXT," +
+        "${SongReaderContract.SongEntry.COLUMN_TITLE} TEXT," +
+        "${SongReaderContract.SongEntry.COLUMN_ALBUMS} TEXT," +
+        "${SongReaderContract.SongEntry.COLUMN_THUMBNAIL} TEXT," +
+        "${SongReaderContract.SongEntry.COLUMN_URL} TEXT)"
 
 private const val SQL_DELETE_ENTRIES =
-    "DROP TABLE IF EXISTS ${NoteReaderContract.NoteEntry.TABLE_NAME}"
+    "DROP TABLE IF EXISTS ${SongReaderContract.SongEntry.TABLE_NAME}"
 
 class SongReaderDbHelper(context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {

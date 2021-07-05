@@ -45,7 +45,7 @@ class DashboardFragment : Fragment(), ListChartAdapter.OnItemClickListener {
         recyclerView.layoutManager =
             LinearLayoutManager(this.requireContext(), LinearLayoutManager.VERTICAL, false)
         dashboardViewModel.mListSongChartLiveData.observe(viewLifecycleOwner, Observer {
-            songAdapter = ListChartAdapter(it, this)
+            songAdapter = ListChartAdapter(this.requireContext(), it, this)
             recyclerView.adapter = songAdapter
             Log.d(MY_TAG, "songs chart = $it")
         })
@@ -77,6 +77,7 @@ class DashboardFragment : Fragment(), ListChartAdapter.OnItemClickListener {
             when (it.itemId) {
                 R.id.popup_like -> {
                     Log.d(MY_TAG, "thêm vào bài hát yêu thích: $item")
+                    dashboardViewModel.setOptionClick(R.id.popup_like,item)
                 }
                 R.id.popup_download -> {
                     Log.d(MY_TAG, "tải về: $item")

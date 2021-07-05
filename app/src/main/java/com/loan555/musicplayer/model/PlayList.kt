@@ -1,27 +1,17 @@
 package com.loan555.musicplayer.model
 
 import android.content.ContentUris
-import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
-import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import android.util.Size
 import com.loan555.musicplayer.MY_TAG
-import com.loan555.musicplayer.PLAYLIST_CHART
 import com.loan555.musicplayer.PLAYLIST_NOTHING
 import com.loan555.musicplayer.PLAYLIST_STORAGE
-import com.loan555.musicplayer.service.ApiChartService
-import com.loan555.musicplayer.service.ApiSearchService
-import com.loan555.musicplayer.service.ApiSongDataService
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 import java.io.IOException
-import java.io.OutputStream
 import java.lang.Exception
 
 class PlayList {
@@ -108,6 +98,7 @@ class PlayList {
                         title,
                         albums,
                         thumbnail,
+                        null,
                         true,
                         contentUri.toString()
                     )

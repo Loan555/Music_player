@@ -1,7 +1,6 @@
 package com.loan555.musicplayer
 
 import android.Manifest
-import android.R.attr.name
 import android.app.DownloadManager
 import android.content.*
 import android.content.pm.PackageManager
@@ -10,6 +9,7 @@ import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.*
 import android.util.Log
+import android.util.Size
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -17,10 +17,12 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.viewpager.widget.ViewPager
+import com.bumptech.glide.Glide
 import com.loan555.musicplayer.databinding.ActivityMainBinding
 import com.loan555.musicplayer.model.*
 import com.loan555.musicplayer.service.*
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.fragment_notifications.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
@@ -31,20 +33,19 @@ import retrofit2.Callback
 import retrofit2.Response
 import java.io.*
 
-
-const val NUM_PAGES = 3
+const val NUM_PAGES = 5
 const val MY_TAG = "aaa"
 const val STORAGE_REQUEST_CODE = 1
-
 
 const val PLAYLIST_NOTHING = -1
 const val PLAYLIST_STORAGE = 0
 const val PLAYLIST_CHART = 1
 const val PLAYLIST_SEARCH = 2
-const val PLAYLIST_LIKE = 3
+const val PLAYLIST_RELATED = 3
+const val PLAYLIST_Like = 4
 
 class MainActivity : AppCompatActivity() {
-    private val dbHelper = SongReaderDbHelper(this)
+    val dbHelper = SongReaderDbHelper(this)
 
     //broadcast
     private lateinit var br: BroadcastReceiver
@@ -64,7 +65,9 @@ class MainActivity : AppCompatActivity() {
     //data
     private val mPlayListStorage = PlayList()
     private val mPlayListChart = PlayList()
+    private val mPlayListSearch = PlayList()
     private val mPlayListRelated = PlayList()
+    private val mPlayListLike = PlayList()
     private val mPlayLists = ArrayList<PlayList>()// khoi tao mot danh sacsh cacs playList rong
 
     /** Defines callbacks for service binding, passed to bindService()  */
@@ -95,12 +98,30 @@ class MainActivity : AppCompatActivity() {
                                 mService.songs = mPlayLists[PLAYLIST_SEARCH].playList
                                 mService.listPlaying = mPlayLists[PLAYLIST_SEARCH].id
                             }
+                            PLAYLIST_RELATED -> {
+                                Log.d(MY_TAG, "click relate list")
+                                mService.songs = mPlayLists[PLAYLIST_RELATED].playList
+                                mService.listPlaying = mPlayLists[PLAYLIST_RELATED].id
+                            }
+                            PLAYLIST_Like -> {
+                                Log.d(MY_TAG, "click like list")
+                                mService.songs = mPlayLists[PLAYLIST_Like].playList
+                                mService.listPlaying = mPlayLists[PLAYLIST_Like].id
+                            }
                         }
                 })
             mainViewModel.songPos.observe(this@MainActivity, {
                 Log.d(MY_TAG, "click new posision song")
                 if (it >= 0 && it < mService.songs.size)
                     mService.playSong(it)
+            })
+            mainViewModel.btnLoadClick.observe(this@MainActivity, {
+//            if (!mService.songs[mService.songPos].isLocal)
+                if (it != 0 && mService.player != null)
+                    relatedSong(mService.songIDPlaying)
+            })
+            mainViewModel.statePlay.observe(this@MainActivity, {
+                mService.statePlay = it % 4
             })
         }
 
@@ -190,20 +211,32 @@ class MainActivity : AppCompatActivity() {
                 binding.itemPlaying.visibility = View.VISIBLE
             else binding.itemPlaying.visibility = View.GONE
         })
+        mainViewModel.actionMusic.observe(this, {
+            when (it) {
+                0 -> {
+                }
+                ACTION_PLAY_PAUSE -> {
+                    if (mService.player != null)
+                        handBtnPlayPause()
+                }
+                ACTION_BACK, ACTION_NEXT -> {
+                    if (mService.player != null)
+                        controlMusic(it)
+                }
+            }
+        })
         mainViewModel.textSearch.observe(this, {
             searchSong(it)
         })
         mainViewModel.pageLoader.observe(this, {
             when (it) {
-                -1 -> {
-                }
                 0 -> {
                     loadDataStorage()
                 }
                 1 -> {
                     loadDataDataChart()
                 }
-                2 -> {
+                3 -> {
                     mainViewModel.textSearch.value?.let { it1 -> searchSong(it1) }
                 }
             }
@@ -211,6 +244,25 @@ class MainActivity : AppCompatActivity() {
         mainViewModel.songDownload.observe(this, {
             if (it != null) {
                 downLoad(it)
+            }
+        })
+        mainViewModel.likeSong.observe(this, {
+            if (it != null) {
+                mPlayLists[PLAYLIST_Like].playList.add(it)
+                saveInDataBase(it)
+                Toast.makeText(this, "add in like list: ${it.title}", Toast.LENGTH_SHORT).show()
+            }
+        })
+        mainViewModel.btnLikeClick.observe(this, {
+            Log.d(MY_TAG,"click like list")
+            GlobalScope.launch(Dispatchers.Main) {
+                val resultOK = async(Dispatchers.IO) {
+                    return@async readFromLikeList()
+                }
+                if (resultOK.await()) {
+                    mainViewModel.readData(mPlayLists[PLAYLIST_Like].playList, PLAYLIST_Like)
+                    Log.d(MY_TAG,"click like list OK")
+                }
             }
         })
         /**
@@ -225,14 +277,125 @@ class MainActivity : AppCompatActivity() {
         binding.btnSkipPrevious.setOnClickListener {
             controlMusic(ACTION_BACK)
         }
+        binding.itemPlaying.setOnClickListener {
+            binding.pagerMain.currentItem = 3
+            if (mService.player != null)
+                mainViewModel.setStopPlayer(false)
+            else mainViewModel.setStopPlayer(true)
+        }
         /**
          * load data
          */
         mPlayLists.add(mPlayListStorage)
         mPlayLists.add(mPlayListChart)
-        mPlayLists.add(mPlayListRelated)
+        mPlayLists.add(mPlayListSearch)
+        mPlayLists.add(mPlayListRelated)// them 4 play list vao danh sach
+        mPlayLists.add(mPlayListLike)
         loadDataStorage()
         loadDataDataChart()
+    }
+
+    private fun readFromLikeList(): Boolean {
+        val db = dbHelper.readableDatabase
+        val projection = arrayOf(
+            SongReaderContract.SongEntry.COLUMN_ID,
+            SongReaderContract.SongEntry.COLUMN_NAME,
+            SongReaderContract.SongEntry.COLUMN_TITLE,
+            SongReaderContract.SongEntry.COLUMN_ARTISTS,
+            SongReaderContract.SongEntry.COLUMN_DURATION,
+            SongReaderContract.SongEntry.COLUMN_THUMBNAIL,
+            SongReaderContract.SongEntry.COLUMN_URL
+        )
+        val cursor = db.query(
+            SongReaderContract.SongEntry.TABLE_NAME,
+            projection,
+            null,
+            null,
+            null,
+            null,
+            null
+        )
+        mPlayLists[PLAYLIST_Like].id = PLAYLIST_Like
+        mPlayLists[PLAYLIST_Like].playList.clear()
+        with(cursor) {
+            while (moveToNext()) {
+                val id = getString(getColumnIndexOrThrow(SongReaderContract.SongEntry.COLUMN_ID))
+                val name =
+                    getString(getColumnIndexOrThrow(SongReaderContract.SongEntry.COLUMN_NAME))
+                val title =
+                    getString(getColumnIndexOrThrow(SongReaderContract.SongEntry.COLUMN_TITLE))
+                val artist =
+                    getString(getColumnIndexOrThrow(SongReaderContract.SongEntry.COLUMN_ARTISTS))
+                val duration =
+                    getInt(getColumnIndexOrThrow(SongReaderContract.SongEntry.COLUMN_DURATION))
+                val thumbnail =
+                    getString(getColumnIndexOrThrow(SongReaderContract.SongEntry.COLUMN_THUMBNAIL))
+                val url = getString(getColumnIndexOrThrow(SongReaderContract.SongEntry.COLUMN_URL))
+                if (thumbnail != null) {
+                    val newSong = SongCustom(
+                        id,
+                        name,
+                        artist,
+                        duration,
+                        0,
+                        title,
+                        "",
+                        null,
+                        thumbnail,
+                        false,
+                        url
+                    )
+                    mPlayLists[PLAYLIST_Like].playList.add(newSong)
+                } else {
+                    var bitmap: Bitmap? = null
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        try {
+                            val thumb =
+                                this@MainActivity.applicationContext.contentResolver.loadThumbnail(
+                                    Uri.parse(url), Size(640, 480), null
+                                )
+                            bitmap = thumb
+                        } catch (e: IOException) {
+                            Log.e(MY_TAG, "can't find bitmap: ${e.message}")
+                        }
+                    }
+                    val newSong = SongCustom(
+                        id,
+                        name,
+                        artist,
+                        duration,
+                        0,
+                        title,
+                        "",
+                        bitmap,
+                        thumbnail,
+                        true,
+                        url
+                    )
+                    mPlayLists[PLAYLIST_Like].playList.add(newSong)
+                }
+            }
+        }
+        cursor.close()
+        return true
+    }
+
+    private fun saveInDataBase(it: SongCustom) {
+        val db = dbHelper.writableDatabase
+        // Create a new map of values, where column names are the keys
+        val values = ContentValues().apply {
+            put(SongReaderContract.SongEntry.COLUMN_ID, it.id)
+            put(SongReaderContract.SongEntry.COLUMN_NAME, it.name)
+            put(SongReaderContract.SongEntry.COLUMN_TITLE, it.title)
+            put(SongReaderContract.SongEntry.COLUMN_ARTISTS, it.artists)
+            put(SongReaderContract.SongEntry.COLUMN_DURATION, it.duration)
+            put(SongReaderContract.SongEntry.COLUMN_THUMBNAIL, it.thumbnail)
+            put(SongReaderContract.SongEntry.COLUMN_URL, it.linkUri)
+        }
+
+// Insert the new row, returning the primary key value of the new row
+        val newRowId = db?.insert(SongReaderContract.SongEntry.TABLE_NAME, null, values)
+        Log.d(MY_TAG, "insert thanh cong : $newRowId")
     }
 
     override fun onStart() {
@@ -346,7 +509,9 @@ class MainActivity : AppCompatActivity() {
                                 dataResponse?.song?.forEach {
                                     count++
                                     if (count > 20) return@forEach
-                                    var bitmap: Bitmap? = null
+                                    var thumb: String? =
+                                        "https://photo-resize-zmp3.zadn.vn/w320_r1x1_png/${it.thumb}"
+
                                     mPlayLists[PLAYLIST_SEARCH].playList.add(
                                         SongCustom(
                                             it.id,
@@ -356,7 +521,8 @@ class MainActivity : AppCompatActivity() {
                                             it.duration.toInt(),
                                             it.name,
                                             "",
-                                            bitmap,
+                                            null,
+                                            thumb,
                                             false,
                                             "http://api.mp3.zing.vn/api/streaming/audio/${it.id}/320"
                                         )
@@ -380,6 +546,47 @@ class MainActivity : AppCompatActivity() {
             override fun onFailure(call: Call<DataSearchResult>, t: Throwable) {
                 Log.e(MY_TAG, "error getCurrentSongData ${t.message}")
                 mainViewModel.setLoading(false, PLAYLIST_SEARCH)
+            }
+        })
+    }
+
+    private fun relatedSong(id: String) {// get data with key
+        mainViewModel.setLoading(true, PLAYLIST_SEARCH)
+        val call = apiRelatedSong.getCurrentData(id)
+        call.enqueue(object : Callback<RelatedSong> {
+            override fun onResponse(
+                call: Call<RelatedSong>,
+                response: Response<RelatedSong>
+            ) {
+                mainViewModel.setLoading(false, PLAYLIST_SEARCH)
+                if (response.code() == 200) {
+                    mPlayLists[PLAYLIST_RELATED].playList.clear()
+                    mPlayLists[PLAYLIST_RELATED].id = PLAYLIST_RELATED
+                    val list = response.body()?.data?.items
+                    list?.forEach {
+                        val songCustom = SongCustom(
+                            it.id,
+                            it.name,
+                            it.artistsNames,
+                            it.duration.toInt() * 1000,
+                            280,
+                            it.title,
+                            "",
+                            null,
+                            it.thumbnail,
+                            false,
+                            "http://api.mp3.zing.vn/api/streaming/audio/${it.id}/320"
+                        )
+                        Log.d(MY_TAG, "add = $songCustom\n")
+                        mPlayLists[PLAYLIST_RELATED].playList.add(songCustom)
+                    }
+                    mainViewModel.readData(mPlayLists[PLAYLIST_RELATED].playList, PLAYLIST_RELATED)
+                } else Log.e(MY_TAG, "response.code() = ${response.code()}")
+            }
+
+            override fun onFailure(call: Call<RelatedSong>, t: Throwable) {
+                Log.e(MY_TAG, "error getCurrentSongData ${t.message}")
+                mainViewModel.setLoading(false, PLAYLIST_RELATED)
             }
         })
     }
@@ -412,7 +619,7 @@ class MainActivity : AppCompatActivity() {
                     val listChart = dataResponse.data
                     listChart.song.forEach {
                         // Load thumbnail of a specific media item.
-                        val thumbnail = null
+                        val thumbnail = it.thumbnail
                         mPlayLists[PLAYLIST_CHART].playList.add(
                             SongCustom(
                                 it.id,
@@ -421,7 +628,8 @@ class MainActivity : AppCompatActivity() {
                                 it.duration.toInt() * 1000,
                                 it.duration.toInt(),
                                 it.title,
-                                "it.album.toString()",
+                                "",
+                                null,
                                 thumbnail,
                                 false,
                                 "http://api.mp3.zing.vn/api/streaming/audio/${it.id}/320"
@@ -483,14 +691,19 @@ class MainActivity : AppCompatActivity() {
                     unbindService(conn)
                 mainViewModel.handStop()
                 mainViewModel.listPos
+                this.finish()
             }
             ACTION_PLAY, ACTION_NEXT, ACTION_BACK -> {
                 if (!mBound) {
                     val intentService = Intent(this, MusicControllerService::class.java)
                     bindService(intentService, conn, Context.BIND_AUTO_CREATE)
                 }
+                if (mService.songs[mService.songPos].thumbnail != null)
+                    Glide.with(this).load(mService.songs[mService.songPos].thumbnail)
+                        .into(binding.imgSong)
                 mainViewModel.initItemPlaying(
-                    mService.songs[mService.songPos].bitmap, mService.songs[mService.songPos].title,
+                    mService.songs[mService.songPos].bitmap,
+                    mService.songs[mService.songPos].title,
                     mService.songs[mService.songPos].artists, mService.isPng() == true
                 )
             }
@@ -545,15 +758,14 @@ class MainActivity : AppCompatActivity() {
         var chart = "song"
         var time = -1
 
-        ////http://mp3.zing.vn/xhr/media/get-source?type=audio&key=kmJHTZHNCVaSmSuymyFHLH
-        val serviceApiGetSong by lazy { ApiSongDataService.create() }
-        var type = "audio"
-        var key = "ZHJmyZkHLzcbAEgyGTbnkGyLhbzchkRsm"// key laf code
-
         ////http://ac.mp3.zing.vn/complete?type=artist,song,key,code&num=500&query=Anh Thế Giới Và Em
         val apiSearchService by lazy { ApiSearchService.create() }
         var typeSearch = "artist,song,key,code"
         var num = 500.toLong()
-        var query = "Anh Thế Giới Và Em"
+
+        //http://mp3.zing.vn/xhr/recommend?type=audio&id=ZW67OIA0
+        val apiRelatedSong by lazy {
+            ApiRelatedSong.create()
+        }
     }
 }

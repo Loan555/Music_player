@@ -1,23 +1,149 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".ui.notifications.NotificationsFragment">
 
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:id="@+id/swipe_refresh"
+    <RelativeLayout
+        android:id="@+id/playing"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:background="@color/purple_200">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recycler_songs"
+        <LinearLayout
+            android:id="@+id/nameItem"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:id="@+id/nameSong"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingBottom="20dp"
+                android:text="----*----"
+                android:textColor="@color/black"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/nameSinger"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="----*----"
+                android:textSize="15sp" />
+        </LinearLayout>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/nameItem">
+
+            <SeekBar
+                android:id="@+id/seek_bar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="20dp"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <View
+                android:id="@+id/loop"
+                android:layout_width="24dp"
+                android:layout_height="20dp"
+                android:layout_marginLeft="50dp"
+                android:layout_marginRight="20dp"
+                android:background="@drawable/ic_baseline_repeat_24"
+                app:layout_constraintBottom_toBottomOf="@id/viewCard"
+                app:layout_constraintRight_toRightOf="@id/skip_back_play"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="@id/viewCard" />
+
+            <ImageButton
+                android:id="@+id/skip_back_play"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="@drawable/ic_skip_previous"
+                app:layout_constraintBottom_toBottomOf="@id/viewCard"
+                app:layout_constraintLeft_toRightOf="@id/loop"
+                app:layout_constraintRight_toLeftOf="@id/viewCard"
+                app:layout_constraintTop_toTopOf="@id/viewCard" />
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/viewCard"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="20dp"
+                app:cardCornerRadius="24dp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/seek_bar">
+
+                <View
+                    android:id="@+id/play"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_gravity="center"
+                    android:layout_margin="10dp"
+                    android:background="@drawable/ic_pause" />
+
+            </androidx.cardview.widget.CardView>
+
+            <View
+                android:id="@+id/skip_next_play"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="@drawable/ic_baseline_skip_next"
+                app:layout_constraintBottom_toBottomOf="@id/viewCard"
+                app:layout_constraintLeft_toRightOf="@id/viewCard"
+                app:layout_constraintRight_toLeftOf="@id/time_btn"
+                app:layout_constraintTop_toTopOf="@id/viewCard" />
+
+            <View
+                android:id="@+id/time_btn"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginRight="50dp"
+                android:background="@drawable/ic_baseline_favorite_border_24"
+                app:layout_constraintBottom_toBottomOf="@id/viewCard"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintLeft_toRightOf="@id/skip_next_play"
+                app:layout_constraintTop_toTopOf="@id/viewCard" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </RelativeLayout>
+
+    <TextView
+        android:id="@+id/text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/playing"
+        android:padding="10dp"
+        android:text="Bài hát liên quan" />
+
+    <Button
+        android:id="@+id/loadRelated"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/playing"
+        android:layout_alignParentEnd="true"
+        android:backgroundTint="@color/purple_200"
+        android:text="Load bài hát liên quan" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_songs_relate"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/text" />
 
     <ProgressBar
         android:id="@+id/progress_search"
@@ -29,4 +155,4 @@
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</RelativeLayout>

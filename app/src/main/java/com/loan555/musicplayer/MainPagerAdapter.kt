@@ -7,6 +7,8 @@ import com.loan555.musicplayer.model.PlayList
 import com.loan555.musicplayer.ui.dashboard.DashboardFragment
 import com.loan555.musicplayer.ui.home.HomeFragment
 import com.loan555.musicplayer.ui.notifications.NotificationsFragment
+import com.loan555.musicplayer.ui.orther.LikeFragment
+import com.loan555.musicplayer.ui.search.DiscoverFragment
 
 class MainPagerAdapter(fm: FragmentManager) : FragmentPagerAdapter(fm) {
     override fun getCount(): Int = NUM_PAGES
@@ -14,7 +16,9 @@ class MainPagerAdapter(fm: FragmentManager) : FragmentPagerAdapter(fm) {
     override fun getItem(position: Int): Fragment {
         return when (position) {
             1 -> DashboardFragment()
-            2 -> NotificationsFragment()
+            3 -> NotificationsFragment()
+            2 -> DiscoverFragment()
+            4 -> LikeFragment()
             else -> HomeFragment()
         }
     }

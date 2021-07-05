@@ -33,6 +33,7 @@ const val ACTION_MUSIC = "android.intent.action.MY_MUSIC_ACTION"
 const val KEY_ACTION_MUSIC = "action_music"
 
 class MusicControllerService : Service() {
+    var statePlay: Int = 0
     private lateinit var br: BroadcastReceiver
     private val binder = MusicControllerBinder()
     var player: MediaPlayer? = null
@@ -50,8 +51,6 @@ class MusicControllerService : Service() {
     //1: bang xep hang
     //2: bai hat lien quan
     //3,4,... : list tu tao
-
-    private lateinit var mainViewModel: AppViewModel
 
     /**
      * Class used for the client Binder.  Because we know this service always
@@ -194,6 +193,7 @@ class MusicControllerService : Service() {
             startService(it)
         }
         sentMyBroadcast(ACTION_PLAY)
+        songIDPlaying = songs[songPos].id
     }
 
     private fun handAction(action: Int) {

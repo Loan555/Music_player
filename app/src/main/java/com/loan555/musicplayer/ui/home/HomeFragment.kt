@@ -86,6 +86,7 @@ class HomeFragment : Fragment(), ListSongAdapter.OnItemClickListener {
             when (it.itemId) {
                 R.id.popup_like -> {
                     Log.d(MY_TAG, "thêm vào bài hát yêu thích: $item")
+                    homeViewModel.setOptionClick(R.id.popup_like,item)
                 }
                 R.id.popup_add_playlist -> {
                     Log.d(MY_TAG, "them vao danh sach phat: $item")
