@@ -78,10 +78,21 @@ class MainActivity : AppCompatActivity() {
             val binder = service as MusicControllerService.MusicControllerBinder
             mService = binder.getService()
             mBound = true
+            if (mService.songs.size > 0) {
+                Log.d(
+                    MY_TAG,
+                    "service is playing ${mService.songs[mService.songPos].toString()}"
+                )
+                mainViewModel.initItemPlaying(
+                    mService.songs[mService.songPos].bitmap,
+                    mService.songs[mService.songPos].title,
+                    mService.songs[mService.songPos].artists, mService.isPlaying
+                )
+            }
             mainViewModel.listPos.observe(
                 this@MainActivity,
                 {// khi list có thay đổ thì phải load lại data vào listPlaying trong service
-                    if (mBound)
+                    if (mBound) {
                         when (it) {
                             PLAYLIST_STORAGE -> {
                                 Log.d(MY_TAG, "click STORANG LIST")
@@ -109,6 +120,7 @@ class MainActivity : AppCompatActivity() {
                                 mService.listPlaying = mPlayLists[PLAYLIST_Like].id
                             }
                         }
+                    }
                 })
             mainViewModel.songPos.observe(this@MainActivity, {
                 Log.d(MY_TAG, "click new posision song")
@@ -154,17 +166,17 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageSelected(position: Int) {
                 when (position) {
+                    0 -> {
+                        nav_view.menu.findItem(R.id.navigation_offline).isChecked = true
+                        supportActionBar?.setTitle(R.string.title_home)
+                    }
                     1 -> {
                         nav_view.menu.findItem(R.id.navigation_chart).isChecked = true
                         supportActionBar?.setTitle(R.string.title_dashboard)
                     }
-                    2 -> {
+                    else -> {
                         nav_view.menu.findItem(R.id.navigation_search).isChecked = true
                         supportActionBar?.setTitle(R.string.title_notifications)
-                    }
-                    else -> {
-                        nav_view.menu.findItem(R.id.navigation_offline).isChecked = true
-                        supportActionBar?.setTitle(R.string.title_home)
                     }
                 }
             }
@@ -254,14 +266,14 @@ class MainActivity : AppCompatActivity() {
             }
         })
         mainViewModel.btnLikeClick.observe(this, {
-            Log.d(MY_TAG,"click like list")
+            Log.d(MY_TAG, "click like list")
             GlobalScope.launch(Dispatchers.Main) {
                 val resultOK = async(Dispatchers.IO) {
                     return@async readFromLikeList()
                 }
                 if (resultOK.await()) {
                     mainViewModel.readData(mPlayLists[PLAYLIST_Like].playList, PLAYLIST_Like)
-                    Log.d(MY_TAG,"click like list OK")
+                    Log.d(MY_TAG, "click like list OK")
                 }
             }
         })
@@ -704,7 +716,7 @@ class MainActivity : AppCompatActivity() {
                 mainViewModel.initItemPlaying(
                     mService.songs[mService.songPos].bitmap,
                     mService.songs[mService.songPos].title,
-                    mService.songs[mService.songPos].artists, mService.isPng() == true
+                    mService.songs[mService.songPos].artists, true
                 )
             }
             ACTION_PLAY_PAUSE -> {

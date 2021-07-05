@@ -15,11 +15,11 @@ class MainPagerAdapter(fm: FragmentManager) : FragmentPagerAdapter(fm) {
 
     override fun getItem(position: Int): Fragment {
         return when (position) {
+            0 -> HomeFragment()
             1 -> DashboardFragment()
             3 -> NotificationsFragment()
             2 -> DiscoverFragment()
-            4 -> LikeFragment()
-            else -> HomeFragment()
+            else -> LikeFragment()
         }
     }
 }

@@ -18,6 +18,7 @@ import androidx.core.app.NotificationCompat
 import com.loan555.musicplayer.MY_TAG
 import com.loan555.musicplayer.R
 import com.loan555.musicplayer.model.*
+import java.io.IOException
 
 const val ACTION_PAUSE = -1
 const val ACTION_RESUME = 1
@@ -33,6 +34,7 @@ const val ACTION_MUSIC = "android.intent.action.MY_MUSIC_ACTION"
 const val KEY_ACTION_MUSIC = "action_music"
 
 class MusicControllerService : Service() {
+    var isPlaying = false
     var statePlay: Int = 0
     private lateinit var br: BroadcastReceiver
     private val binder = MusicControllerBinder()
@@ -158,7 +160,7 @@ class MusicControllerService : Service() {
     }
 
     private fun getBtnImg(): Int {
-        return if (isPng() == true) {
+        return if (isPlaying) {
             R.drawable.ic_pause
         } else R.drawable.ic_play
     }
@@ -180,14 +182,24 @@ class MusicControllerService : Service() {
         player?.release()
         player = MediaPlayer().apply {
             setAudioStreamType(AudioManager.STREAM_MUSIC)
-            setDataSource(applicationContext, uri)
+            try {
+                setDataSource(applicationContext, uri)
+            }catch (e: IOException){
+                Log.e(MY_TAG,"error play media: ${e.message}")
+            }
             setOnCompletionListener {
                 playNext()
             }
             isLooping = looping
-            prepare()
-            start()
+            prepareAsync()
+            setOnPreparedListener { start() }
+            setOnErrorListener { mp, _, _ ->
+                mp.reset()
+                Log.e(MY_TAG,"error get data")
+                false
+            }
         }
+        isPlaying = true
         Intent(this, MusicControllerService::class.java).also {
             it.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startService(it)
@@ -230,7 +242,7 @@ class MusicControllerService : Service() {
         sendBroadcast(intent)
     }
 
-    fun playNext(): String? {
+    private fun playNext(): String? {
         Toast.makeText(this, "next", Toast.LENGTH_SHORT).show()
         songPos++;
         if (songPos == songs.size) songPos = 0
@@ -262,10 +274,12 @@ class MusicControllerService : Service() {
 
     private fun pausePlayer() {
         player?.pause()
+        isPlaying = false
     }
 
     private fun resumePlayer() {
         player?.start()
+        isPlaying = true
     }
 
     fun seek(position: Int) {

@@ -31,27 +31,6 @@ class NotificationsFragment : Fragment(),
         super.onCreate(savedInstanceState)
     }
 
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        inflater.inflate(R.menu.menu_search, menu)
-        val search = menu?.findItem(R.id.menu_search)
-        val searchView = search?.actionView as SearchView
-        searchView.queryHint = "Search"
-        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                Log.d("aaa", "search list submit")
-                if (query != null) {
-                    notificationsViewModel.getLoad(query)
-                }
-                return false
-            }
-
-            override fun onQueryTextChange(newText: String?): Boolean {
-                Log.d("aaa", "onQueryTextChange")
-                return false
-            }
-        })
-    }
-
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -69,10 +48,6 @@ class NotificationsFragment : Fragment(),
         notificationsViewModel.mListSongRelateLiveData.observe(viewLifecycleOwner, Observer {
             // gán binding cho textView để nó theo dõi biến _text
             binding.recyclerSongsRelate.adapter = ListSongAdapter(this.requireContext(), it, this)
-        })
-        notificationsViewModel.searchLoading.observe(viewLifecycleOwner, {
-            if (it) binding.progressSearch.visibility = View.VISIBLE
-            else binding.progressSearch.visibility = View.GONE
         })
         notificationsViewModel.isPlaying.observe(viewLifecycleOwner, {
             if (it)
@@ -105,12 +80,12 @@ class NotificationsFragment : Fragment(),
         notificationsViewModel.artist.observe(viewLifecycleOwner, {
             binding.nameSinger.text = it
         })
-        notificationsViewModel.seekbarMax.observe(viewLifecycleOwner, {
-            binding.seekBar.max = it
-        })
-        notificationsViewModel.seekbarPos.observe(viewLifecycleOwner, {
-            binding.seekBar.progress = it
-        })
+//        notificationsViewModel.seekbarMax.observe(viewLifecycleOwner, {
+//            binding.seekBar.max = it
+//        })
+//        notificationsViewModel.seekbarPos.observe(viewLifecycleOwner, {
+//            binding.seekBar.progress = it
+//        })
         notificationsViewModel.isStop.observe(viewLifecycleOwner, {
             if (!it)
                 binding.playing.visibility = View.VISIBLE

@@ -85,6 +85,10 @@ class DiscoverFragment : Fragment(),
                 this
             )
         })
+        viewModel.searchLoading.observe(viewLifecycleOwner, {
+            if (it) binding.progressBar.visibility = View.VISIBLE
+            else binding.progressBar.visibility = View.GONE
+        })
         binding.swipeRefresh.setOnRefreshListener {
             viewModel.getLoading(2)
             binding.swipeRefresh.isRefreshing = false
